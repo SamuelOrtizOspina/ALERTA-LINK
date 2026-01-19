@@ -1,0 +1,137 @@
+{
+  "model": {
+    "name": "step1_baseline",
+    "type": "LogisticRegression",
+    "version": "1.0.0",
+    "created_at": "2026-01-09T12:42:42.874573",
+    "features_count": 24,
+    "features": [
+      "url_length",
+      "domain_length",
+      "path_length",
+      "num_digits",
+      "num_hyphens",
+      "num_dots",
+      "num_subdomains",
+      "entropy",
+      "has_https",
+      "has_port",
+      "has_at_symbol",
+      "contains_ip",
+      "has_punycode",
+      "shortener_detected",
+      "paste_service_detected",
+      "has_suspicious_words",
+      "tld_risk",
+      "excessive_subdomains",
+      "digit_ratio",
+      "num_params",
+      "special_chars",
+      "in_tranco",
+      "tranco_rank",
+      "brand_impersonation"
+    ]
+  },
+  "validation": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "roc_auc": 1.0,
+    "average_precision": 1.0,
+    "samples": 800,
+    "confusion_matrix": {
+      "true_negative": 400,
+      "false_positive": 0,
+      "false_negative": 0,
+      "true_positive": 400
+    },
+    "classification_report": {
+      "0": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 400.0
+      },
+      "1": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 400.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 800.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 800.0
+      }
+    }
+  },
+  "test": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "roc_auc": 1.0,
+    "average_precision": 1.0,
+    "samples": 800,
+    "confusion_matrix": {
+      "true_negative": 400,
+      "false_positive": 0,
+      "false_negative": 0,
+      "true_positive": 400
+    },
+    "classification_report": {
+      "0": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 400.0
+      },
+      "1": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 400.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 800.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 800.0
+      }
+    }
+  },
+  "risk_thresholds": {
+    "threshold_30": {
+      "precision": 0.9975062344139651,
+      "recall": 1.0,
+      "predicted_positive": 401
+    },
+    "threshold_50": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "predicted_positive": 400
+    },
+    "threshold_70": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "predicted_positive": 400
+    }
+  },
+  "evaluated_at": "2026-01-09T12:42:44.589037"
+}
