@@ -7,12 +7,14 @@
 ## Descripcion
 
 Aplicacion movil para Android que permite:
-1. Analizar URLs sospechosas recibidas por SMS/WhatsApp/email
-2. Ver score de riesgo con semaforo visual (0-100)
-3. Entender por que una URL es peligrosa (senales explicadas)
-4. Reportar URLs maliciosas (opt-in)
-5. Funciona 100% OFFLINE con motor heuristico local
-6. Modo cloud-assisted opcional (requiere consentimiento)
+1. **Deteccion automatica de SMS** - Analiza URLs en SMS entrantes automaticamente
+2. Analizar URLs sospechosas recibidas por SMS/WhatsApp/email
+3. Ver score de riesgo con semaforo visual (0-100)
+4. Entender por que una URL es peligrosa (senales explicadas)
+5. Reportar URLs maliciosas (opt-in)
+6. Funciona 100% OFFLINE con motor heuristico local
+7. Modo cloud-assisted opcional (requiere consentimiento)
+8. **Notificaciones de alerta** para URLs de riesgo MEDIUM/HIGH
 
 ---
 
@@ -52,6 +54,134 @@ MODO CLOUD-ASSISTED (Opcional):
   - Analisis mejorado con modelos ML del servidor
   - Fallback automatico a modo local si servidor no disponible
 ```
+
+---
+
+## Proteccion SMS Automatica (v1.2.0)
+
+### Descripcion
+
+La app detecta automaticamente URLs en mensajes SMS entrantes y las analiza sin intervencion del usuario. Funciona incluso cuando la app esta cerrada.
+
+### Arquitectura SMS
+
+```
++-------------------+
+|   SMS ENTRANTE    |
+|   (cualquier app) |
++--------+----------+
+         |
+         | Android Broadcast
+         v
++------------------------+
+|   SmsReceiver          |
+|   (BroadcastReceiver)  |
+|                        |
+| - Detecta SMS_RECEIVED |
+| - Extrae URLs (regex)  |
+| - Valida formato URL   |
++--------+---------------+
+         |
+         | URL encontrada
+         v
++------------------------+        +-------------------+
+|   SmsAnalyzer          | -----> |    BACKEND        |
+|   (Background Thread)  |        |    (FastAPI)      |
+|                        | <----- |                   |
+| - POST /analyze        |        | {score, risk,     |
+| - Timeout: 15s         |        |  signals}         |
++--------+---------------+        +-------------------+
+         |
+         | Si riesgo MEDIUM/HIGH
+         v
++------------------------+
+|   NotificationHelper   |
+|                        |
+| - Canal HIGH (rojo)    |
+| - Canal MEDIUM (naranja)|
+| - Vibracion + LED      |
+| - Abre app al tocar    |
++------------------------+
+```
+
+### Permisos Requeridos
+
+| Permiso | Uso | Obligatorio |
+|---------|-----|-------------|
+| `RECEIVE_SMS` | Detectar SMS entrantes | Si |
+| `READ_SMS` | Leer contenido del SMS | Si |
+| `POST_NOTIFICATIONS` | Mostrar alertas (Android 13+) | Si |
+| `VIBRATE` | Vibrar en alertas de alto riesgo | No |
+| `INTERNET` | Comunicarse con el backend | Si |
+
+**Nota:** NO se solicitan permisos innecesarios como bateria, ubicacion, camara, etc.
+
+### Flujo de Deteccion
+
+1. **Llega SMS** con URL sospechosa
+2. **SmsReceiver** detecta el broadcast `SMS_RECEIVED`
+3. **Extrae URLs** usando expresion regular
+4. **SmsAnalyzer** envia URL al backend (thread separado)
+5. **Backend responde** con score y nivel de riesgo
+6. Si **MEDIUM o HIGH**: muestra notificacion de alerta
+7. Si la **app esta abierta**: muestra SnackBar adicional
+8. Usuario **toca notificacion**: abre app con detalles
+
+### Canales de Notificacion
+
+| Canal | Nombre | Importancia | Uso |
+|-------|--------|-------------|-----|
+| `alerta_link_high` | Alertas de Alto Riesgo | HIGH | Score >= 71 |
+| `alerta_link_medium` | Alertas de Riesgo Medio | DEFAULT | Score 31-70 |
+
+### Pantalla de Configuracion SMS
+
+```
++----------------------------------+
+|  < Proteccion SMS               |
++----------------------------------+
+|                                  |
+|  +----------------------------+  |
+|  |  [ESCUDO VERDE]            |  |
+|  |  Proteccion Activa         |  |
+|  |  Los SMS seran analizados  |  |
+|  +----------------------------+  |
+|                                  |
+|  Como funciona?                  |
+|  1. Recibes SMS con enlace      |
+|  2. ALERTA-LINK lo detecta      |
+|  3. Se analiza automaticamente  |
+|  4. Recibes alerta si peligroso |
+|                                  |
+|  Permisos necesarios:           |
+|  [x] Recibir SMS      [ACTIVO]  |
+|  [x] Leer SMS         [ACTIVO]  |
+|  [x] Notificaciones   [ACTIVO]  |
+|                                  |
+|  +----------------------------+  |
+|  | Privacidad:                |  |
+|  | - Solo analizamos URLs     |  |
+|  | - No guardamos mensajes    |  |
+|  | - No compartimos datos     |  |
+|  +----------------------------+  |
++----------------------------------+
+```
+
+### Archivos Kotlin (Android)
+
+| Archivo | Descripcion |
+|---------|-------------|
+| `SmsReceiver.kt` | BroadcastReceiver que detecta SMS entrantes |
+| `SmsAnalyzer.kt` | Envia URLs al backend y procesa resultados |
+| `NotificationHelper.kt` | Crea y muestra notificaciones de alerta |
+| `MainActivity.kt` | Maneja permisos y Platform Channels |
+
+### Archivos Dart (Flutter)
+
+| Archivo | Descripcion |
+|---------|-------------|
+| `sms_service.dart` | Comunicacion Flutter <-> Android via MethodChannel |
+| `sms_protection_screen.dart` | UI para configurar proteccion SMS |
 
 ---
 
@@ -265,6 +395,29 @@ final result = await api.analyzeUrl(url);
 await api.reportUrl(url: url, label: 'phishing');
 ```
 
+### SmsService
+Maneja comunicacion con Android para deteccion de SMS.
+```dart
+// Inicializar (en main.dart)
+SmsService.initialize();
+
+// Verificar permisos
+final hasPermission = await SmsService.hasSmsPermission();
+final status = await SmsService.getPermissionsStatus();
+
+// Solicitar permisos
+await SmsService.requestAllPermissions();
+
+// Escuchar eventos de SMS
+SmsService.onSmsUrlAnalyzed = (url, score, riskLevel, sender) {
+  // URL analizada desde SMS
+};
+
+SmsService.onNotificationOpened = (url, score, riskLevel) {
+  // Usuario toco la notificacion
+};
+```
+
 ---
 
 ## Configuracion
@@ -289,7 +442,19 @@ class ApiConfig {
 
 En `android/app/src/main/AndroidManifest.xml`:
 ```xml
+<!-- Internet: Comunicacion con backend -->
 <uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+<!-- SMS: Deteccion automatica de phishing -->
+<uses-permission android:name="android.permission.RECEIVE_SMS"/>
+<uses-permission android:name="android.permission.READ_SMS"/>
+
+<!-- Notificaciones: Alertas al usuario (Android 13+) -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+<!-- Vibracion: Alertas de alto riesgo -->
+<uses-permission android:name="android.permission.VIBRATE"/>
 
 <!-- Recibir URLs compartidas -->
 <intent-filter>
@@ -297,6 +462,16 @@ En `android/app/src/main/AndroidManifest.xml`:
     <category android:name="android.intent.category.DEFAULT"/>
     <data android:mimeType="text/plain"/>
 </intent-filter>
+
+<!-- SMS Receiver -->
+<receiver
+    android:name=".SmsReceiver"
+    android:exported="true"
+    android:permission="android.permission.BROADCAST_SMS">
+    <intent-filter android:priority="999">
+        <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+    </intent-filter>
+</receiver>
 ```
 
 ---
@@ -381,7 +556,31 @@ dependencies:
    - Acepta consentimiento
    - Se envia al servidor (o guarda local si offline)
 
-### Escenario 2: Compartir desde WhatsApp
+### Escenario 2: Deteccion Automatica desde SMS (v1.2.0)
+
+1. **Usuario recibe SMS con enlace sospechoso**
+   - "BANCOLOMBIA: Su cuenta sera bloqueada. Verifique: http://bancol0mbia.xyz/verify"
+
+2. **SmsReceiver detecta el SMS automaticamente**
+   - Funciona incluso con la app cerrada
+   - Extrae la URL del mensaje
+
+3. **SmsAnalyzer envia al backend**
+   - Analiza en background (thread separado)
+   - No bloquea el telefono
+
+4. **Backend responde: Score 92, HIGH RISK**
+
+5. **NotificationHelper muestra alerta**
+   - Notificacion de alta prioridad con vibracion
+   - "ALERTA: URL Peligrosa Detectada"
+   - "De: +57... | Riesgo: 92/100"
+
+6. **Usuario toca la notificacion**
+   - Abre ALERTA-LINK con detalles completos
+   - Ve todas las senales detectadas
+
+### Escenario 3: Compartir desde WhatsApp
 
 1. **Usuario recibe mensaje de WhatsApp con enlace**
 
@@ -423,6 +622,12 @@ dependencies:
 | PreferencesService | COMPLETADO |
 | Historial local | COMPLETADO |
 | Integracion API (opcional) | COMPLETADO |
+| **Proteccion SMS (v1.2.0)** | **COMPLETADO** |
+| SmsReceiver (BroadcastReceiver) | COMPLETADO |
+| SmsAnalyzer (analisis background) | COMPLETADO |
+| NotificationHelper (alertas) | COMPLETADO |
+| SmsProtectionScreen (UI) | COMPLETADO |
+| Permisos SMS runtime | COMPLETADO |
 
 ---
 
@@ -436,4 +641,4 @@ dependencies:
 
 ---
 
-**Ultima actualizacion:** 2026-01-02
+**Ultima actualizacion:** 2026-01-23

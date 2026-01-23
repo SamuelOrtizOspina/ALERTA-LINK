@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 800">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+    </marker>
+    <marker id="arrowOpen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6" fill="none" stroke="#333" stroke-width="1.5"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1100" height="800" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="550" y="30" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#333" text-anchor="middle">ALERTA-LINK - Diagrama de Secuencia: Analisis de URL</text>
+
+  <!-- Actors/Objects -->
+  <!-- Usuario -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="50" width="80" height="40" rx="5" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+    <text x="100" y="75" font-family="Arial" font-size="11" fill="white" text-anchor="middle">Usuario</text>
+  </g>
+  <line x1="100" y1="90" x2="100" y2="750" stroke="#4CAF50" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- App Flutter -->
+  <g filter="url(#shadow)">
+    <rect x="180" y="50" width="100" height="40" rx="5" fill="#2196F3" stroke="#1565C0" stroke-width="2"/>
+    <text x="230" y="75" font-family="Arial" font-size="11" fill="white" text-anchor="middle">App Flutter</text>
+  </g>
+  <line x1="230" y1="90" x2="230" y2="750" stroke="#2196F3" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- Backend API -->
+  <g filter="url(#shadow)">
+    <rect x="330" y="50" width="100" height="40" rx="5" fill="#388E3C" stroke="#1B5E20" stroke-width="2"/>
+    <text x="380" y="75" font-family="Arial" font-size="11" fill="white" text-anchor="middle">Backend API</text>
+  </g>
+  <line x1="380" y1="90" x2="380" y2="750" stroke="#388E3C" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- Feature Extractor -->
+  <g filter="url(#shadow)">
+    <rect x="460" y="50" width="100" height="40" rx="5" fill="#7B1FA2" stroke="#4A148C" stroke-width="2"/>
+    <text x="510" y="68" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Feature</text>
+    <text x="510" y="82" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Extractor</text>
+  </g>
+  <line x1="510" y1="90" x2="510" y2="750" stroke="#7B1FA2" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- ML Predictor -->
+  <g filter="url(#shadow)">
+    <rect x="590" y="50" width="100" height="40" rx="5" fill="#7B1FA2" stroke="#4A148C" stroke-width="2"/>
+    <text x="640" y="68" font-family="Arial" font-size="10" fill="white" text-anchor="middle">ML</text>
+    <text x="640" y="82" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Predictor</text>
+  </g>
+  <line x1="640" y1="90" x2="640" y2="750" stroke="#7B1FA2" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- Heuristic Predictor -->
+  <g filter="url(#shadow)">
+    <rect x="720" y="50" width="100" height="40" rx="5" fill="#7B1FA2" stroke="#4A148C" stroke-width="2"/>
+    <text x="770" y="68" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Heuristic</text>
+    <text x="770" y="82" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Predictor</text>
+  </g>
+  <line x1="770" y1="90" x2="770" y2="750" stroke="#7B1FA2" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- Tranco Service -->
+  <g filter="url(#shadow)">
+    <rect x="850" y="50" width="90" height="40" rx="5" fill="#E65100" stroke="#BF360C" stroke-width="2"/>
+    <text x="895" y="68" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Tranco</text>
+    <text x="895" y="82" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Service</text>
+  </g>
+  <line x1="895" y1="90" x2="895" y2="750" stroke="#E65100" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- VirusTotal Service -->
+  <g filter="url(#shadow)">
+    <rect x="970" y="50" width="90" height="40" rx="5" fill="#E65100" stroke="#BF360C" stroke-width="2"/>
+    <text x="1015" y="68" font-family="Arial" font-size="10" fill="white" text-anchor="middle">VirusTotal</text>
+    <text x="1015" y="82" font-family="Arial" font-size="10" fill="white" text-anchor="middle">Service</text>
+  </g>
+  <line x1="1015" y1="90" x2="1015" y2="750" stroke="#E65100" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- Activation Bars -->
+  <!-- Usuario Activation -->
+  <rect x="95" y="115" width="10" height="30" fill="#81C784"/>
+
+  <!-- App Flutter Activations -->
+  <rect x="225" y="115" width="10" height="600" fill="#64B5F6"/>
+
+  <!-- Backend Activations -->
+  <rect x="375" y="150" width="10" height="530" fill="#81C784"/>
+
+  <!-- Messages -->
+  <!-- 1. Usuario -> App: Ingresar URL -->
+  <line x1="105" y1="130" x2="225" y2="130" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="165" y="125" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">1. Ingresar URL</text>
+
+  <!-- 2. App -> Backend: POST /analyze -->
+  <line x1="235" y1="165" x2="375" y2="165" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="305" y="160" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">2. POST /analyze</text>
+  <text x="305" y="175" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">{url: "..."}</text>
+
+  <!-- 3. Backend -> Feature Extractor: extract_features() -->
+  <rect x="505" y="195" width="10" height="60" fill="#CE93D8"/>
+  <line x1="385" y1="210" x2="505" y2="210" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="445" y="205" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">3. extract_features(url)</text>
+
+  <!-- 4. Feature Extractor -> Backend: 24 features -->
+  <line x1="505" y1="245" x2="385" y2="245" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="445" y="260" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">4. {features: {...}}</text>
+
+  <!-- 5. Backend -> Tranco: check_domain() -->
+  <rect x="890" y="275" width="10" height="40" fill="#FFCC80"/>
+  <line x1="385" y1="290" x2="890" y2="290" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="640" y="285" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">5. check_domain(domain)</text>
+
+  <!-- 6. Tranco -> Backend: rank/not_found -->
+  <line x1="890" y1="310" x2="385" y2="310" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="640" y="325" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">6. {rank: 1234, in_tranco: true}</text>
+
+  <!-- ALT Fragment: ML vs Heuristic -->
+  <rect x="360" y="340" width="460" height="180" fill="none" stroke="#333" stroke-width="1" stroke-dasharray="3,3"/>
+  <rect x="360" y="340" width="40" height="15" fill="#eee" stroke="#333" stroke-width="1"/>
+  <text x="380" y="351" font-family="Arial" font-size="9" font-weight="bold" fill="#333" text-anchor="middle">par</text>
+  <text x="590" y="355" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">[Ejecucion Paralela]</text>
+
+  <!-- 7. Backend -> ML Predictor -->
+  <rect x="635" y="365" width="10" height="50" fill="#CE93D8"/>
+  <line x1="385" y1="380" x2="635" y2="380" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="510" y="375" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">7. predict(features)</text>
+
+  <!-- 8. ML Predictor -> Backend -->
+  <line x1="635" y1="410" x2="385" y2="410" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="510" y="425" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">8. {ml_score: 75}</text>
+
+  <!-- Separator -->
+  <line x1="365" y1="435" x2="815" y2="435" stroke="#999" stroke-width="1" stroke-dasharray="2,2"/>
+
+  <!-- 9. Backend -> Heuristic Predictor -->
+  <rect x="765" y="445" width="10" height="60" fill="#CE93D8"/>
+  <line x1="385" y1="460" x2="765" y2="460" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="575" y="455" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">9. analyze_heuristics(url, features)</text>
+
+  <!-- 10. Heuristic -> Backend -->
+  <line x1="765" y1="500" x2="385" y2="500" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="575" y="515" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">10. {heuristic_score: 85, signals: [...]}</text>
+
+  <!-- OPT Fragment: VirusTotal -->
+  <rect x="360" y="535" width="680" height="80" fill="none" stroke="#333" stroke-width="1" stroke-dasharray="3,3"/>
+  <rect x="360" y="535" width="40" height="15" fill="#fff3e0" stroke="#333" stroke-width="1"/>
+  <text x="380" y="546" font-family="Arial" font-size="9" font-weight="bold" fill="#333" text-anchor="middle">opt</text>
+  <text x="700" y="550" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">[score entre 30-70]</text>
+
+  <!-- 11. Backend -> VirusTotal -->
+  <rect x="1010" y="555" width="10" height="40" fill="#FFCC80"/>
+  <line x1="385" y1="570" x2="1010" y2="570" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="700" y="565" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">11. check_url(url)</text>
+
+  <!-- 12. VirusTotal -> Backend -->
+  <line x1="1010" y1="590" x2="385" y2="590" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="700" y="605" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">12. {detections: 5, malicious: true}</text>
+
+  <!-- 13. Backend calculates final score -->
+  <rect x="370" y="630" width="80" height="30" rx="3" fill="#E8F5E9" stroke="#388E3C" stroke-width="1"/>
+  <text x="410" y="650" font-family="Arial" font-size="8" fill="#333" text-anchor="middle">Calcular Score</text>
+  <text x="410" y="660" font-family="Arial" font-size="7" fill="#666" text-anchor="middle">Final (0-100)</text>
+
+  <!-- 14. Backend -> App: Response -->
+  <line x1="375" y1="680" x2="235" y2="680" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="305" y="675" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">14. AnalyzeResponse</text>
+  <text x="305" y="695" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">{score, risk_level, signals}</text>
+
+  <!-- 15. App -> Usuario: Mostrar resultado -->
+  <line x1="225" y1="720" x2="105" y2="720" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="165" y="715" font-family="Arial" font-size="9" fill="#333" text-anchor="middle">15. Mostrar Resultado</text>
+  <text x="165" y="735" font-family="Arial" font-size="8" fill="#666" text-anchor="middle">(Semaforo + Senales)</text>
+
+  <!-- Legend -->
+  <rect x="30" y="760" width="1040" height="35" rx="3" fill="white" stroke="#ddd"/>
+  <line x1="60" y1="777" x2="100" y2="777" stroke="#333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="115" y="781" font-family="Arial" font-size="9" fill="#333">Mensaje sincrono</text>
+  <line x1="200" y1="777" x2="240" y2="777" stroke="#333" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowOpen)"/>
+  <text x="255" y="781" font-family="Arial" font-size="9" fill="#333">Respuesta</text>
+  <rect x="330" y="770" width="30" height="15" fill="#64B5F6"/>
+  <text x="375" y="781" font-family="Arial" font-size="9" fill="#333">Activacion</text>
+  <rect x="440" y="768" width="50" height="20" fill="none" stroke="#333" stroke-dasharray="3,3"/>
+  <text x="460" y="780" font-family="Arial" font-size="8" fill="#333">opt</text>
+  <text x="510" y="781" font-family="Arial" font-size="9" fill="#333">Fragmento opcional</text>
+  <rect x="620" y="768" width="50" height="20" fill="none" stroke="#333" stroke-dasharray="3,3"/>
+  <text x="640" y="780" font-family="Arial" font-size="8" fill="#333">par</text>
+  <text x="690" y="781" font-family="Arial" font-size="9" fill="#333">Ejecucion paralela</text>
+</svg>

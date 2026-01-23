@@ -1,7 +1,7 @@
 # ALERTA-LINK - Manual de Usuario
 
-**Version:** 1.0
-**Fecha:** 2026-01-09
+**Version:** 1.2.0
+**Fecha:** 2026-01-23
 
 ---
 
@@ -17,11 +17,12 @@ ALERTA-LINK es una aplicacion gratuita que te ayuda a detectar enlaces peligroso
 2. [Instalacion](#2-instalacion)
 3. [Pantalla Principal](#3-pantalla-principal)
 4. [Como Analizar un Enlace](#4-como-analizar-un-enlace)
-5. [Entender los Resultados](#5-entender-los-resultados)
-6. [Modos de Conexion](#6-modos-de-conexion)
-7. [Historial de Analisis](#7-historial-de-analisis)
-8. [Preguntas Frecuentes](#8-preguntas-frecuentes)
-9. [Contacto y Soporte](#9-contacto-y-soporte)
+5. [Proteccion SMS Automatica](#5-proteccion-sms-automatica) **(NUEVO v1.2.0)**
+6. [Entender los Resultados](#6-entender-los-resultados)
+7. [Modos de Conexion](#7-modos-de-conexion)
+8. [Historial de Analisis](#8-historial-de-analisis)
+9. [Preguntas Frecuentes](#9-preguntas-frecuentes)
+10. [Contacto y Soporte](#10-contacto-y-soporte)
 
 ---
 
@@ -73,6 +74,9 @@ URL Real:   https://www.bancolombia.com
 |---------|-----------------|
 | Internet | Consultar bases de datos de seguridad |
 | Notificaciones | Alertarte sobre enlaces peligrosos |
+| SMS (opcional) | Detectar automaticamente enlaces en mensajes |
+
+**Nota sobre SMS:** Este permiso es opcional. Si no lo activas, puedes seguir usando la app pegando enlaces manualmente.
 
 ---
 
@@ -131,7 +135,100 @@ URL Real:   https://www.bancolombia.com
 
 ---
 
-## 5. Entender los Resultados
+## 5. Proteccion SMS Automatica
+
+**NUEVO en version 1.2.0**
+
+ALERTA-LINK ahora puede detectar automaticamente enlaces peligrosos en los SMS que recibes, incluso cuando la app esta cerrada.
+
+### Como Funciona
+
+```
++----------------------------------+
+|  SMS ENTRANTE                    |
+|  "Tu cuenta sera bloqueada.      |
+|   Verifica: http://banco.xyz"    |
++----------------------------------+
+         |
+         v (automatico)
++----------------------------------+
+|  ALERTA-LINK analiza el enlace   |
+|  en segundo plano                |
++----------------------------------+
+         |
+         v (si es peligroso)
++----------------------------------+
+|  NOTIFICACION DE ALERTA          |
+|  "URL Peligrosa Detectada"       |
+|  Riesgo: 85/100                  |
++----------------------------------+
+```
+
+### Activar la Proteccion SMS
+
+1. **Abre ALERTA-LINK**
+2. **Toca el banner "Proteccion SMS"** en la pantalla principal
+3. **Toca "Activar Proteccion SMS"**
+4. **Acepta los permisos** cuando Android te los pida:
+   - "Recibir SMS" - Para detectar mensajes entrantes
+   - "Leer SMS" - Para analizar el contenido
+   - "Notificaciones" - Para alertarte de peligros
+
+### Permisos Necesarios
+
+| Permiso | Para que se usa |
+|---------|-----------------|
+| Recibir SMS | Detectar cuando llega un mensaje |
+| Leer SMS | Buscar enlaces en el mensaje |
+| Notificaciones | Alertarte si hay peligro |
+
+**Importante:**
+- Solo analizamos los enlaces, NO leemos todo el mensaje
+- No guardamos tus mensajes
+- No compartimos tu informacion
+- Puedes desactivar esto en cualquier momento
+
+### Cuando Recibes un SMS Sospechoso
+
+1. **Recibes el SMS** normalmente
+2. **ALERTA-LINK detecta el enlace** automaticamente
+3. **Analiza el enlace** con el servidor (1-2 segundos)
+4. **Si es peligroso**, recibes una notificacion:
+
+```
++----------------------------------+
+|  ALERTA: URL Peligrosa           |
++----------------------------------+
+|  De: +57 300 123 4567            |
+|  URL: http://banc0-xyz.tk/login  |
+|  Riesgo: 92/100 (3 senales)      |
+|                                  |
+|  Toca para ver mas detalles      |
++----------------------------------+
+```
+
+5. **Toca la notificacion** para ver los detalles completos
+
+### Configurar la Proteccion
+
+En la pantalla "Proteccion SMS" puedes ver:
+
+- **Estado actual**: Activa (verde) o Inactiva (naranja)
+- **Permisos**: Cuales estan activos y cuales faltan
+- **Informacion de privacidad**: Como usamos tus datos
+
+### Desactivar la Proteccion
+
+Si quieres desactivar la proteccion SMS:
+
+1. Ve a **Configuracion de Android**
+2. Busca **"Aplicaciones" > "ALERTA-LINK"**
+3. Toca **"Permisos"**
+4. Desactiva **"SMS"**
+
+---
+
+## 6. Entender los Resultados
 
 ### El Semaforo de Riesgo
 
@@ -207,7 +304,7 @@ Segun el resultado, la app te sugiere que hacer:
 
 ---
 
-## 6. Modos de Conexion
+## 7. Modos de Conexion
 
 ALERTA-LINK puede funcionar de 3 formas:
 
@@ -235,7 +332,7 @@ ALERTA-LINK puede funcionar de 3 formas:
 
 ---
 
-## 7. Historial de Analisis
+## 8. Historial de Analisis
 
 La app guarda un registro de todos los enlaces que has analizado.
 
@@ -255,7 +352,7 @@ La app guarda un registro de todos los enlaces que has analizado.
 
 ---
 
-## 8. Preguntas Frecuentes
+## 9. Preguntas Frecuentes
 
 ### La app dice que un sitio es peligroso pero yo lo conozco
 Es posible que el sitio legitimo tenga caracteristicas sospechosas. Verifica:
@@ -281,6 +378,18 @@ Si, copia el enlace del correo y pegalo en la app.
 ### La app consume muchos datos?
 No, cada analisis usa menos de 10 KB. En modo offline no consume datos.
 
+### La app lee todos mis mensajes SMS?
+NO. ALERTA-LINK solo busca enlaces (URLs) en los mensajes. No lee ni guarda el contenido de tus conversaciones. Solo analiza los enlaces encontrados.
+
+### La proteccion SMS funciona con la app cerrada?
+Si. Una vez activada, la proteccion funciona aunque la app no este abierta. Android permite esto porque es un proceso muy breve que solo se activa cuando llega un SMS.
+
+### Puedo desactivar la deteccion automatica de SMS?
+Si. Ve a Configuracion de Android > Aplicaciones > ALERTA-LINK > Permisos y desactiva "SMS". La app seguira funcionando para analisis manuales.
+
+### Por que la app pide permiso de SMS?
+Para poder detectar automaticamente enlaces peligrosos en los mensajes que recibes. Este permiso es opcional - si no lo das, puedes seguir usando la app copiando y pegando enlaces manualmente.
+
 ### Como reporto un enlace peligroso?
 1. Analiza el enlace
 2. Si es peligroso, toca "Reportar"
@@ -288,7 +397,7 @@ No, cada analisis usa menos de 10 KB. En modo offline no consume datos.
 
 ---
 
-## 9. Contacto y Soporte
+## 10. Contacto y Soporte
 
 ### Problemas Tecnicos
 - Email: soporte@alertalink.co (ficticio)

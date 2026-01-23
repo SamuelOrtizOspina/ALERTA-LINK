@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.2"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="700" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="500" y="35" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#333" text-anchor="middle">ALERTA-LINK - Diagrama Entidad-Relacion</text>
+
+  <!-- Entity: AnalysisResult -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="80" width="280" height="280" rx="5" fill="white" stroke="#1976D2" stroke-width="2"/>
+    <rect x="50" y="80" width="280" height="35" rx="5" fill="#1976D2"/>
+    <text x="190" y="105" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">analysis_results</text>
+
+    <!-- Attributes -->
+    <line x1="50" y1="135" x2="330" y2="135" stroke="#E3F2FD" stroke-width="1"/>
+    <text x="65" y="155" font-family="Consolas, monospace" font-size="11" fill="#333">PK  id: UUID</text>
+    <line x1="50" y1="165" x2="330" y2="165" stroke="#E3F2FD" stroke-width="1"/>
+    <text x="65" y="185" font-family="Consolas, monospace" font-size="11" fill="#333">    url: VARCHAR(2048)</text>
+    <text x="65" y="205" font-family="Consolas, monospace" font-size="11" fill="#333">    normalized_url: VARCHAR(2048)</text>
+    <text x="65" y="225" font-family="Consolas, monospace" font-size="11" fill="#333">    score: INTEGER (0-100)</text>
+    <text x="65" y="245" font-family="Consolas, monospace" font-size="11" fill="#333">    risk_level: ENUM</text>
+    <text x="65" y="265" font-family="Consolas, monospace" font-size="11" fill="#333">    signals: JSONB</text>
+    <text x="65" y="285" font-family="Consolas, monospace" font-size="11" fill="#333">    features: JSONB</text>
+    <text x="65" y="305" font-family="Consolas, monospace" font-size="11" fill="#333">    model_version: VARCHAR(50)</text>
+    <text x="65" y="325" font-family="Consolas, monospace" font-size="11" fill="#333">    created_at: TIMESTAMP</text>
+    <text x="65" y="345" font-family="Consolas, monospace" font-size="11" fill="#333">    client_ip: VARCHAR(45)</text>
+  </g>
+
+  <!-- Entity: IngestedUrl -->
+  <g filter="url(#shadow)">
+    <rect x="400" y="80" width="280" height="260" rx="5" fill="white" stroke="#388E3C" stroke-width="2"/>
+    <rect x="400" y="80" width="280" height="35" rx="5" fill="#388E3C"/>
+    <text x="540" y="105" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">ingested_urls</text>
+
+    <!-- Attributes -->
+    <line x1="400" y1="135" x2="680" y2="135" stroke="#E8F5E9" stroke-width="1"/>
+    <text x="415" y="155" font-family="Consolas, monospace" font-size="11" fill="#333">PK  id: UUID</text>
+    <line x1="400" y1="165" x2="680" y2="165" stroke="#E8F5E9" stroke-width="1"/>
+    <text x="415" y="185" font-family="Consolas, monospace" font-size="11" fill="#333">    url: VARCHAR(2048)</text>
+    <text x="415" y="205" font-family="Consolas, monospace" font-size="11" fill="#333">    label: INTEGER (0/1)</text>
+    <text x="415" y="225" font-family="Consolas, monospace" font-size="11" fill="#333">    source: VARCHAR(100)</text>
+    <text x="415" y="245" font-family="Consolas, monospace" font-size="11" fill="#333">    verified: BOOLEAN</text>
+    <text x="415" y="265" font-family="Consolas, monospace" font-size="11" fill="#333">    verification_source: VARCHAR</text>
+    <text x="415" y="285" font-family="Consolas, monospace" font-size="11" fill="#333">    created_at: TIMESTAMP</text>
+    <text x="415" y="305" font-family="Consolas, monospace" font-size="11" fill="#333">    metadata: JSONB</text>
+    <text x="415" y="325" font-family="Consolas, monospace" font-size="11" fill="#333">    used_for_training: BOOLEAN</text>
+  </g>
+
+  <!-- Entity: Report -->
+  <g filter="url(#shadow)">
+    <rect x="750" y="80" width="220" height="240" rx="5" fill="white" stroke="#E65100" stroke-width="2"/>
+    <rect x="750" y="80" width="220" height="35" rx="5" fill="#E65100"/>
+    <text x="860" y="105" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">reports</text>
+
+    <!-- Attributes -->
+    <line x1="750" y1="135" x2="970" y2="135" stroke="#FFF3E0" stroke-width="1"/>
+    <text x="765" y="155" font-family="Consolas, monospace" font-size="11" fill="#333">PK  id: UUID</text>
+    <line x1="750" y1="165" x2="970" y2="165" stroke="#FFF3E0" stroke-width="1"/>
+    <text x="765" y="185" font-family="Consolas, monospace" font-size="11" fill="#333">    url: VARCHAR(2048)</text>
+    <text x="765" y="205" font-family="Consolas, monospace" font-size="11" fill="#333">    report_type: VARCHAR</text>
+    <text x="765" y="225" font-family="Consolas, monospace" font-size="11" fill="#333">    description: TEXT</text>
+    <text x="765" y="245" font-family="Consolas, monospace" font-size="11" fill="#333">    reporter_id: VARCHAR</text>
+    <text x="765" y="265" font-family="Consolas, monospace" font-size="11" fill="#333">    status: ENUM</text>
+    <text x="765" y="285" font-family="Consolas, monospace" font-size="11" fill="#333">    created_at: TIMESTAMP</text>
+    <text x="765" y="305" font-family="Consolas, monospace" font-size="11" fill="#333">    reviewed_at: TIMESTAMP</text>
+  </g>
+
+  <!-- Entity: Signal (Conceptual/JSONB) -->
+  <g filter="url(#shadow)">
+    <rect x="50" y="420" width="250" height="200" rx="5" fill="white" stroke="#7B1FA2" stroke-width="2" stroke-dasharray="5,3"/>
+    <rect x="50" y="420" width="250" height="35" rx="5" fill="#7B1FA2"/>
+    <text x="175" y="445" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">Signal (JSONB)</text>
+
+    <!-- Attributes -->
+    <line x1="50" y1="475" x2="300" y2="475" stroke="#F3E5F5" stroke-width="1"/>
+    <text x="65" y="495" font-family="Consolas, monospace" font-size="11" fill="#333">    id: STRING</text>
+    <text x="65" y="515" font-family="Consolas, monospace" font-size="11" fill="#333">    name: STRING</text>
+    <text x="65" y="535" font-family="Consolas, monospace" font-size="11" fill="#333">    severity: ENUM</text>
+    <text x="65" y="555" font-family="Consolas, monospace" font-size="11" fill="#333">    weight: INTEGER</text>
+    <text x="65" y="575" font-family="Consolas, monospace" font-size="11" fill="#333">    evidence: OBJECT</text>
+    <text x="65" y="595" font-family="Consolas, monospace" font-size="11" fill="#333">    explanation: STRING</text>
+  </g>
+
+  <!-- Entity: Feature (Conceptual/JSONB) -->
+  <g filter="url(#shadow)">
+    <rect x="370" y="420" width="250" height="220" rx="5" fill="white" stroke="#795548" stroke-width="2" stroke-dasharray="5,3"/>
+    <rect x="370" y="420" width="250" height="35" rx="5" fill="#795548"/>
+    <text x="495" y="445" font-family="Arial" font-size="14" font-weight="bold" fill="white" text-anchor="middle">Feature (JSONB)</text>
+
+    <!-- Attributes -->
+    <line x1="370" y1="475" x2="620" y2="475" stroke="#EFEBE9" stroke-width="1"/>
+    <text x="385" y="495" font-family="Consolas, monospace" font-size="11" fill="#333">    url_length: INTEGER</text>
+    <text x="385" y="515" font-family="Consolas, monospace" font-size="11" fill="#333">    domain_length: INTEGER</text>
+    <text x="385" y="535" font-family="Consolas, monospace" font-size="11" fill="#333">    num_digits: INTEGER</text>
+    <text x="385" y="555" font-family="Consolas, monospace" font-size="11" fill="#333">    entropy: FLOAT</text>
+    <text x="385" y="575" font-family="Consolas, monospace" font-size="11" fill="#333">    has_https: BOOLEAN</text>
+    <text x="385" y="595" font-family="Consolas, monospace" font-size="11" fill="#333">    in_tranco: BOOLEAN</text>
+    <text x="385" y="615" font-family="Consolas, monospace" font-size="11" fill="#333">    ... (24 total)</text>
+  </g>
+
+  <!-- Enum: RiskLevel -->
+  <g filter="url(#shadow)">
+    <rect x="700" y="420" width="150" height="120" rx="5" fill="white" stroke="#546E7A" stroke-width="2"/>
+    <rect x="700" y="420" width="150" height="30" rx="5" fill="#546E7A"/>
+    <text x="775" y="442" font-family="Arial" font-size="12" font-weight="bold" fill="white" text-anchor="middle">RiskLevel</text>
+    <text x="775" y="458" font-family="Arial" font-size="9" fill="white" text-anchor="middle">&lt;&lt;enumeration&gt;&gt;</text>
+    <line x1="700" y1="470" x2="850" y2="470" stroke="#ECEFF1" stroke-width="1"/>
+    <text x="715" y="490" font-family="Consolas, monospace" font-size="11" fill="#333">LOW (0-30)</text>
+    <text x="715" y="510" font-family="Consolas, monospace" font-size="11" fill="#333">MEDIUM (31-70)</text>
+    <text x="715" y="530" font-family="Consolas, monospace" font-size="11" fill="#333">HIGH (71-100)</text>
+  </g>
+
+  <!-- Enum: ReportStatus -->
+  <g filter="url(#shadow)">
+    <rect x="700" y="560" width="150" height="110" rx="5" fill="white" stroke="#546E7A" stroke-width="2"/>
+    <rect x="700" y="560" width="150" height="30" rx="5" fill="#546E7A"/>
+    <text x="775" y="582" font-family="Arial" font-size="12" font-weight="bold" fill="white" text-anchor="middle">ReportStatus</text>
+    <text x="775" y="598" font-family="Arial" font-size="9" fill="white" text-anchor="middle">&lt;&lt;enumeration&gt;&gt;</text>
+    <line x1="700" y1="610" x2="850" y2="610" stroke="#ECEFF1" stroke-width="1"/>
+    <text x="715" y="630" font-family="Consolas, monospace" font-size="11" fill="#333">PENDING</text>
+    <text x="715" y="650" font-family="Consolas, monospace" font-size="11" fill="#333">REVIEWED</text>
+    <text x="715" y="670" font-family="Consolas, monospace" font-size="11" fill="#333">CONFIRMED</text>
+  </g>
+
+  <!-- Relationships -->
+  <!-- AnalysisResult contains Signals (1:N) -->
+  <line x1="175" y1="360" x2="175" y2="420" stroke="#7B1FA2" stroke-width="2"/>
+  <text x="185" y="390" font-family="Arial" font-size="10" fill="#7B1FA2">1:N</text>
+  <text x="185" y="405" font-family="Arial" font-size="9" fill="#666">contains</text>
+
+  <!-- AnalysisResult contains Features (1:N) -->
+  <line x1="280" y1="360" x2="495" y2="420" stroke="#795548" stroke-width="2"/>
+  <text x="380" y="380" font-family="Arial" font-size="10" fill="#795548">1:N</text>
+  <text x="380" y="395" font-family="Arial" font-size="9" fill="#666">contains</text>
+
+  <!-- AnalysisResult uses RiskLevel -->
+  <line x1="330" y1="260" x2="400" y2="260" stroke="#666" stroke-width="1" stroke-dasharray="5,3"/>
+  <line x1="540" y1="260" x2="540" y2="350" stroke="#666" stroke-width="1" stroke-dasharray="5,3"/>
+  <line x1="540" y1="350" x2="700" y2="480" stroke="#666" stroke-width="1" stroke-dasharray="5,3"/>
+
+  <!-- Report uses ReportStatus -->
+  <line x1="860" y1="320" x2="860" y2="400" stroke="#666" stroke-width="1" stroke-dasharray="5,3"/>
+  <line x1="860" y1="400" x2="775" y2="560" stroke="#666" stroke-width="1" stroke-dasharray="5,3"/>
+
+  <!-- IngestedUrl can become AnalysisResult (dashed) -->
+  <line x1="400" y1="200" x2="330" y2="200" stroke="#666" stroke-width="1.5" stroke-dasharray="8,4"/>
+  <text x="365" y="190" font-family="Arial" font-size="9" fill="#666">puede</text>
+  <text x="365" y="205" font-family="Arial" font-size="9" fill="#666">generar</text>
+
+  <!-- Report can reference IngestedUrl -->
+  <line x1="750" y1="200" x2="680" y2="200" stroke="#666" stroke-width="1.5" stroke-dasharray="8,4"/>
+  <text x="715" y="190" font-family="Arial" font-size="9" fill="#666">puede</text>
+  <text x="715" y="205" font-family="Arial" font-size="9" fill="#666">crear</text>
+
+  <!-- Legend -->
+  <rect x="880" y="420" width="100" height="130" rx="3" fill="white" stroke="#ddd"/>
+  <text x="930" y="440" font-family="Arial" font-size="10" font-weight="bold" fill="#333" text-anchor="middle">Leyenda</text>
+  <rect x="895" y="455" width="20" height="15" fill="white" stroke="#1976D2" stroke-width="2"/>
+  <text x="925" y="467" font-family="Arial" font-size="8" fill="#333">Tabla</text>
+  <rect x="895" y="480" width="20" height="15" fill="white" stroke="#7B1FA2" stroke-width="2" stroke-dasharray="3,2"/>
+  <text x="925" y="492" font-family="Arial" font-size="8" fill="#333">JSONB</text>
+  <rect x="895" y="505" width="20" height="15" fill="#546E7A"/>
+  <text x="925" y="517" font-family="Arial" font-size="8" fill="#333">Enum</text>
+  <text x="895" y="540" font-family="Arial" font-size="8" fill="#333">PK = Primary Key</text>
+</svg>
