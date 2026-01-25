@@ -1,0 +1,46 @@
+# ALERTA-LINK Docker Compose
+# Sistema de Analisis Forense Automatico para phishing
+
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: alertalink-db
+    environment:
+      POSTGRES_DB: alertalink
+      POSTGRES_USER: alerta
+      POSTGRES_PASSWORD: alerta123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alerta -d alertalink"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: alertalink-api
+    environment:
+      - DATABASE_URL=postgresql://alerta:alerta123@postgres:5432/alertalink
+      - DEBUG=false
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+      - ./datasets/ingested:/app/datasets/ingested
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

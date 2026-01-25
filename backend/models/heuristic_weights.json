@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "calibration_date": "2026-01-18T14:55:51.687375",
+  "dataset_size": 7545,
+  "metrics": {
+    "accuracy": 0.7587806494367131,
+    "precision": 0.8739431206764028,
+    "recall": 0.6038236856080722,
+    "f1": 0.7141959798994975
+  },
+  "weights": {
+    "IP_AS_HOST": 39,
+    "PUNYCODE_DETECTED": 17,
+    "BRAND_IMPERSONATION": 31,
+    "URL_SHORTENER": 6,
+    "PASTE_SERVICE": 16,
+    "HOSTING_PLATFORM": 3,
+    "RISKY_TLD": 0,
+    "SUSPICIOUS_WORDS": 18,
+    "EXCESSIVE_SUBDOMAINS": 0,
+    "NO_HTTPS": 34,
+    "LONG_URL": 1,
+    "HIGH_DIGIT_RATIO": 8,
+    "HIGH_ENTROPY": 8,
+    "AT_SYMBOL": 5,
+    "TRUSTED_DOMAIN": -15,
+    "DOMAIN_NOT_IN_TRANCO": 12,
+    "DOMAIN_IN_TRANCO": -35,
+    "VIRUSTOTAL_CLEAN": -25,
+    "VIRUSTOTAL_MALICIOUS_LOW": 25,
+    "VIRUSTOTAL_MALICIOUS_MED": 40,
+    "VIRUSTOTAL_MALICIOUS_HIGH": 60,
+    "VIRUSTOTAL_MALICIOUS_CRITICAL": 80
+  }
+}

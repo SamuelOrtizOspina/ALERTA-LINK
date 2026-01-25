@@ -1,0 +1,139 @@
+# ===========================================
+# ALERTA-LINK - .gitignore
+# ===========================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables (NUNCA subir API keys)
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ===========================================
+# Flutter/Dart - alerta_link_flutter
+# ===========================================
+alerta_link_flutter/.dart_tool/
+alerta_link_flutter/build/
+alerta_link_flutter/.flutter-plugins
+alerta_link_flutter/.flutter-plugins-dependencies
+alerta_link_flutter/.packages
+alerta_link_flutter/pubspec.lock
+
+# iOS
+alerta_link_flutter/ios/Pods/
+alerta_link_flutter/ios/.symlinks/
+alerta_link_flutter/ios/Flutter/Flutter.framework
+alerta_link_flutter/ios/Flutter/Flutter.podspec
+alerta_link_flutter/ios/Flutter/ephemeral/
+
+# Android
+alerta_link_flutter/android/.gradle/
+alerta_link_flutter/android/local.properties
+alerta_link_flutter/android/*.iml
+alerta_link_flutter/android/app/build/
+
+# ===========================================
+# Test coverage
+# ===========================================
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Cache
+.cache/
+*.cache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Database
+*.db
+*.sqlite3
+
+# ===========================================
+# Secrets y datos sensibles
+# ===========================================
+**/secrets/
+**/credentials/
+**/*_secret*
+!**/config.py
+
+# ===========================================
+# Archivos grandes (no subir a GitHub)
+# ===========================================
+
+# APK (compilar desde codigo fuente)
+*.apk
+
+# Modelos ML grandes (generar con scripts)
+# backend/models/step1_baseline.pkl
+
+# Datasets crudos (muy grandes)
+Buenos_Datos/
+Datos_Malos/
+datos_ya_entrenados_pushing/
+
+# Backups de datasets
+datasets/splits/*_backup_*.csv
+
+# ===========================================
+# Playwright browsers
+# ===========================================
+playwright/.cache/
+
+# ===========================================
+# Archivos temporales de Claude
+# ===========================================
+.claude/
+backend/nul
+nul
