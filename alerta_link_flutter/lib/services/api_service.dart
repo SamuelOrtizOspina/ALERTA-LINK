@@ -5,7 +5,7 @@ import '../models/url_analysis.dart';
 /// Configuracion de la API segun ambiente
 class ApiConfig {
   // URL permanente del servidor (tu dominio)
-  static const String productionUrl = 'https://api.samuelortizospina.me';
+  static const String productionUrl = 'https://alerta.mirrorhub.tech';
 
   // URL para desarrollo local (emulador Android)
   static const String developmentUrl = 'http://10.0.2.2:8000';

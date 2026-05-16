@@ -12,7 +12,7 @@
 |------------|--------|-------|
 | APK | ✅ Lista | `alerta_link_v2.apk` - URL permanente configurada |
 | Modelo ML | ✅ Funcionando | GradientBoosting 98.75% accuracy |
-| Named Tunnel | ✅ Configurado | `https://api.samuelortizospina.me` |
+| Named Tunnel | ✅ Configurado | `https://alerta.mirrorhub.tech` |
 | APIs | ✅ Integradas | Tranco + VirusTotal |
 
 ---
@@ -28,7 +28,7 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 cloudflared tunnel run alerta-link
 ```
 
-**Verificar:** https://api.samuelortizospina.me/health
+**Verificar:** https://alerta.mirrorhub.tech/health
 
 ---
 
@@ -117,7 +117,7 @@ INF Registered tunnel connection connIndex=0 location=bog04 protocol=quic
 INF Registered tunnel connection connIndex=1 location=mia08 protocol=quic
 ```
 
-**URL permanente:** `https://api.samuelortizospina.me`
+**URL permanente:** `https://alerta.mirrorhub.tech`
 
 **Ventaja:** La URL nunca cambia. No necesitas recompilar la APK.
 
@@ -156,7 +156,7 @@ curl http://localhost:8000/health
 │        │                                                         │
 │        ▼                                                         │
 │   ┌─────────────────────────────────────────┐                   │
-│   │ https://api.samuelortizospina.me        │ ← URL FIJA        │
+│   │ https://alerta.mirrorhub.tech        │ ← URL FIJA        │
 │   └─────────────────────────────────────────┘                   │
 │        │                                                         │
 │        ▼ (HTTPS encriptado)                                     │
@@ -217,7 +217,7 @@ La APK `alerta_link_v2.apk` ya tiene la URL permanente configurada:
 
 ```dart
 // lib/services/api_service.dart (YA CONFIGURADO)
-static const String productionUrl = 'https://api.samuelortizospina.me';
+static const String productionUrl = 'https://alerta.mirrorhub.tech';
 ```
 
 ### Solo para desarrollo local (opcional):
@@ -290,7 +290,7 @@ start /B cmd /c "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
 timeout /t 3 /nobreak > nul
 
 echo Iniciando Named Tunnel...
-echo URL permanente: https://api.samuelortizospina.me
+echo URL permanente: https://alerta.mirrorhub.tech
 echo ========================================
 cloudflared tunnel run alerta-link
 ```
@@ -331,7 +331,7 @@ Universidad Manuela Beltran - Ingenieria de Software 2025
 
 | Dato | Valor |
 |------|-------|
-| URL Publica | `https://api.samuelortizospina.me` |
+| URL Publica | `https://alerta.mirrorhub.tech` |
 | Tunnel Name | `alerta-link` |
 | Tunnel ID | `e1cb11f8-1e7e-4fb2-9a9d-41aefebdfb78` |
 | Credenciales | `C:\Users\samuel Ortiz\.cloudflared\e1cb11f8-1e7e-4fb2-9a9d-41aefebdfb78.json` |

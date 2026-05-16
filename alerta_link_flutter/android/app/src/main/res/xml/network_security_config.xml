@@ -22,7 +22,7 @@
 
     <!-- Dominio de produccion - solo HTTPS -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">samuelortizospina.me</domain>
+        <domain includeSubdomains="true">mirrorhub.tech</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

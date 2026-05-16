@@ -23,7 +23,7 @@ object SmsAnalyzer {
     private const val TAG = "SmsAnalyzer"
 
     // URL del backend de ALERTA-LINK
-    private const val API_URL = "https://api.samuelortizospina.me/analyze"
+    private const val API_URL = "https://alerta.mirrorhub.tech/analyze"
 
     // Timeout para la conexión (en milisegundos)
     private const val CONNECT_TIMEOUT = 10000

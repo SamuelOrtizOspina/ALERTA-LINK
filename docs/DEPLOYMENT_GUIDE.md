@@ -1,7 +1,7 @@
 # ALERTA-LINK - Guia de Despliegue
 
 **Fecha:** 2026-01-09
-**Dominio:** samuelortizospina.me
+**Dominio:** mirrorhub.tech
 
 ---
 
@@ -76,7 +76,7 @@ flutter install
 
 ## Opcion B: Despliegue en Servidor
 
-### Para produccion con tu dominio samuelortizospina.me
+### Para produccion con tu dominio mirrorhub.tech
 
 ### Requisitos del Servidor
 
@@ -144,7 +144,7 @@ TRANCO_API_EMAIL=tu-email
 VIRUSTOTAL_API_KEY=tu-api-key
 
 # CORS
-CORS_ORIGINS=https://samuelortizospina.me,https://api.samuelortizospina.me
+CORS_ORIGINS=https://mirrorhub.tech,https://alerta.mirrorhub.tech
 ```
 
 ### Paso 4: Crear Servicio Systemd
@@ -189,7 +189,7 @@ sudo nano /etc/nginx/sites-available/alertalink
 ```nginx
 server {
     listen 80;
-    server_name api.samuelortizospina.me;
+    server_name alerta.mirrorhub.tech;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -216,14 +216,14 @@ sudo systemctl restart nginx
 
 ```bash
 # Obtener certificado SSL gratuito con Let's Encrypt
-sudo certbot --nginx -d api.samuelortizospina.me
+sudo certbot --nginx -d alerta.mirrorhub.tech
 ```
 
 ---
 
 ## Configurar Dominio
 
-### En tu proveedor de DNS (donde compraste samuelortizospina.me):
+### En tu proveedor de DNS (donde compraste mirrorhub.tech):
 
 1. Crear registro **A**:
    - Nombre: `api`
@@ -234,7 +234,7 @@ sudo certbot --nginx -d api.samuelortizospina.me
 
 3. Verificar:
 ```bash
-nslookup api.samuelortizospina.me
+nslookup alerta.mirrorhub.tech
 # Debe mostrar la IP de tu servidor
 ```
 
@@ -297,7 +297,7 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 
 ```bash
 # Desde cualquier navegador
-curl https://api.samuelortizospina.me/health
+curl https://alerta.mirrorhub.tech/health
 # Debe retornar: {"status": "ok", ...}
 ```
 

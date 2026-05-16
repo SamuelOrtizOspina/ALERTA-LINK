@@ -32,7 +32,7 @@ CORS_ORIGINS: str = "*"
 
 **Despues:**
 ```python
-CORS_ORIGINS: str = "https://samuelortizospina.me,https://api.samuelortizospina.me,http://localhost:8000,http://10.0.2.2:8000"
+CORS_ORIGINS: str = "https://mirrorhub.tech,https://alerta.mirrorhub.tech,http://localhost:8000,http://10.0.2.2:8000"
 ```
 
 **Archivo:** `backend/app/main.py`
@@ -109,7 +109,7 @@ static String baseUrl = 'http://10.0.2.2:8000';
 **Despues:**
 ```dart
 class ApiConfig {
-  static const String productionUrl = 'https://api.samuelortizospina.me';
+  static const String productionUrl = 'https://alerta.mirrorhub.tech';
   static const String developmentUrl = 'http://10.0.2.2:8000';
 
   static String get baseUrl {

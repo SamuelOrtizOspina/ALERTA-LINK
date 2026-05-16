@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     # Registro: https://tranco-list.eu/
     TRANCO_API_KEY: str = ""  # Requerido en .env
     TRANCO_API_EMAIL: str = ""  # Requerido en .env
-    TRANCO_RANK_THRESHOLD: int = 100000  # Top 100k = legitimo
+    TRANCO_RANK_THRESHOLD: int = 10000  # Top 10k = legitimo (mas estricto, evita typosquats populares)
 
     # VirusTotal API (verificacion de URLs maliciosas)
     # Registro: https://www.virustotal.com/gui/my-apikey
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     # CORS - Separar multiples origenes con coma
     # SEGURIDAD: NO usar "*" en produccion
     # ---------------------------------------------------------------------
-    CORS_ORIGINS: str = "https://samuelortizospina.me,https://api.samuelortizospina.me,http://localhost:8000,http://10.0.2.2:8000"
+    CORS_ORIGINS: str = "https://mirrorhub.tech,https://alerta.mirrorhub.tech,http://localhost:8000,http://10.0.2.2:8000"
 
     @property
     def cors_origins_list(self) -> list:
