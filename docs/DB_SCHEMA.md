@@ -4,6 +4,22 @@
 
 ---
 
+## Script ejecutable
+
+El script completo y ejecutable del esquema relacional esta en:
+
+**[../database/schema.sql](../database/schema.sql)**
+
+Para crear todas las tablas en una base de datos PostgreSQL limpia:
+
+```bash
+psql -U <usuario> -d alertalink -f database/schema.sql
+```
+
+El script incluye 6 tablas, 2 funciones trigger y datos iniciales para `system_settings`.
+
+---
+
 ## Vista General
 
 ```

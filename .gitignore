@@ -135,8 +135,49 @@ datasets/splits/*_backup_*.csv
 playwright/.cache/
 
 # ===========================================
-# Archivos temporales de Claude
+# Archivos temporales de Claude / Asistentes
 # ===========================================
 .claude/
+.claude/**
+**/.claude/
+**/.claude/**
+.cursor/
+.windsurf/
+.copilot/
 backend/nul
 nul
+
+# ===========================================
+# Credenciales y certificados (paranoia)
+# ===========================================
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.cer
+*.csr
+*_credentials.json
+*_secret.json
+.cloudflared/
+**/.cloudflared/**
+auth.json
+session.json
+token.json
+*.token
+cookies.txt
+
+# Backups que pueden contener secretos
+*.bak
+*.old
+*.orig
+*.swp.bak
+
+# Node (si aparece en el futuro)
+node_modules/
+.npm/
+.yarn/
+
+# Reportes con datos potencialmente sensibles
+reports/*.json
+!reports/.gitkeep

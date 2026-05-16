@@ -40,6 +40,9 @@
 11. [RUNBOOK.md](RUNBOOK.md) - Guia de operaciones y troubleshooting
 12. [GUIA_SERVIDOR.md](GUIA_SERVIDOR.md) - Como iniciar el servidor (local y remoto)
 13. [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Opciones de despliegue en la nube
+14. [GUIA_CAMBIO_DOMINIO.md](GUIA_CAMBIO_DOMINIO.md) - Como cambiar de dominio y reconfigurar el Cloudflare Tunnel
+15. [GUIA_COMPILAR_APK.md](GUIA_COMPILAR_APK.md) - Como compilar el APK de Flutter e instalarlo en un celular
+16. [GUIA_INSTALACION.md](GUIA_INSTALACION.md) - Instalacion completa del sistema desde cero
 
 ### Seguridad
 

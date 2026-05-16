@@ -105,7 +105,7 @@ Explica por que es segura o peligrosa
 
 ### APK Lista
 - **Archivo:** `alerta_link_v3.apk` (en la raiz del proyecto)
-- **URL configurada:** `https://api.samuelortizospina.me` (permanente)
+- **URL configurada:** `https://alerta.mirrorhub.tech` (permanente)
 - **Selector de modelo:** ML o Heuristico (en Configuracion)
 - **No requiere modificaciones** - Solo instalar en el dispositivo Android
 
@@ -131,12 +131,12 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 cloudflared tunnel run alerta-link
 ```
 
-**Verificar funcionamiento:** https://api.samuelortizospina.me/health
+**Verificar funcionamiento:** https://alerta.mirrorhub.tech/health
 
 ### Datos del Tunel Cloudflare (Named Tunnel)
 | Dato | Valor |
 |------|-------|
-| URL Publica | `https://api.samuelortizospina.me` |
+| URL Publica | `https://alerta.mirrorhub.tech` |
 | Tunnel ID | `e1cb11f8-1e7e-4fb2-9a9d-41aefebdfb78` |
 | Credenciales | `C:\Users\samuel Ortiz\.cloudflared\e1cb11f8-1e7e-4fb2-9a9d-41aefebdfb78.json` |
 | Config | `C:\Users\samuel Ortiz\.cloudflared\config.yml` |
@@ -170,7 +170,7 @@ cloudflared tunnel run alerta-link
 +------------------------------------------------------------------+
 |              CLOUDFLARE NAMED TUNNEL                              |
 |------------------------------------------------------------------|
-| - URL publica: https://api.samuelortizospina.me                  |
+| - URL publica: https://alerta.mirrorhub.tech                  |
 | - HTTPS automatico                                                |
 | - Sin abrir puertos en router                                     |
 +------------------------------------------------------------------+
@@ -543,7 +543,8 @@ Real    0   3451    328    (TN=3451, FP=328)
 |-------|------|-------------|
 | IP_AS_HOST | +39 | URL usa direccion IP como host |
 | NO_HTTPS | +34 | Sin conexion segura HTTPS |
-| BRAND_IMPERSONATION | +31 | Suplanta marca conocida |
+| TYPOSQUATTING | +50 | Dominio similar a marca conocida (distancia de edicion) |
+| BRAND_IMPERSONATION | +45 | Suplanta marca conocida (substring) |
 | SUSPICIOUS_WORDS | +18 | Contiene palabras de phishing |
 | PUNYCODE_DETECTED | +17 | Dominio con caracteres especiales (xn--) |
 | PASTE_SERVICE | +16 | Es un servicio de paste |
@@ -559,7 +560,7 @@ Real    0   3451    328    (TN=3451, FP=328)
 
 | Senal | Peso | Descripcion |
 |-------|------|-------------|
-| DOMAIN_IN_TRANCO | -35 | Dominio en Tranco Top 100k |
+| DOMAIN_IN_TRANCO | -35 | Dominio en Tranco Top 10k (threshold reducido tras hallazgo de typosquats populares) |
 | VIRUSTOTAL_CLEAN | -25 | VirusTotal confirma limpio |
 | TRUSTED_DOMAIN | -15 | Dominio en lista de confianza |
 
@@ -1240,7 +1241,7 @@ En `lib/services/api_service.dart`:
 ```dart
 class ApiConfig {
   // URL permanente del servidor
-  static const String productionUrl = 'https://api.samuelortizospina.me';
+  static const String productionUrl = 'https://alerta.mirrorhub.tech';
 
   // URL para desarrollo local
   static const String developmentUrl = 'http://10.0.2.2:8000';
@@ -1492,7 +1493,7 @@ curl -X POST http://localhost:8000/analyze \
 El proyecto usa un Named Tunnel con URL permanente:
 
 ```
-https://api.samuelortizospina.me
+https://alerta.mirrorhub.tech
 ```
 
 **Iniciar el tunel:**
@@ -1565,7 +1566,7 @@ En `alerta_link_flutter/lib/services/api_service.dart`:
 ```dart
 class ApiConfig {
   // URL permanente del servidor
-  static const String productionUrl = 'https://api.samuelortizospina.me';
+  static const String productionUrl = 'https://alerta.mirrorhub.tech';
   static const String developmentUrl = 'http://10.0.2.2:8000';
 }
 ```
@@ -1599,7 +1600,7 @@ def is_safe_url(url):
 
 Configuracion en `config.py`:
 ```python
-CORS_ORIGINS = "https://samuelortizospina.me,http://localhost:8000"
+CORS_ORIGINS = "https://mirrorhub.tech,http://localhost:8000"
 ```
 
 ## 11.4 Permisos Android
@@ -2103,11 +2104,12 @@ desarrollo/
 
 | ID | Severidad | Peso | Descripcion |
 |----|-----------|------|-------------|
-| BRAND_IMPERSONATION | HIGH | 40 | Suplanta marca conocida |
+| TYPOSQUATTING | HIGH | 50 | Dominio muy similar a marca (Levenshtein >= 0.75) |
+| BRAND_IMPERSONATION | HIGH | 45 | Suplanta marca conocida (substring) |
 | IP_AS_HOST | HIGH | 39 | URL usa IP como host |
 | DOMAIN_TOO_NEW | HIGH | 35 | Dominio < 30 dias (WHOIS) |
 | NO_HTTPS | HIGH | 34 | Sin conexion segura |
-| VIRUSTOTAL_DETECTION | HIGH | 30 | Detectado por VT |
+| VIRUSTOTAL_DETECTION | HIGH | 25-80 | Detectado por VT (segun cantidad de motores) |
 | PUNYCODE_DETECTED | HIGH | 25 | Dominio con punycode |
 | PASTE_SERVICE | MEDIUM | 20 | Es un paste service |
 | SUSPICIOUS_WORDS | MEDIUM | 18 | Palabras phishing |
@@ -2141,14 +2143,76 @@ desarrollo/
 
 | ID | Severidad | Peso | Descripcion |
 |----|-----------|------|-------------|
-| DOMAIN_IN_TRANCO | LOW | -35 | Dominio en Top 100k |
+| DOMAIN_IN_TRANCO | LOW | -35 | Dominio en Top 10k (threshold ajustado en v1.2.1) |
 | VIRUSTOTAL_CLEAN | LOW | -25 | Confirmado limpio por VT |
 | DOMAIN_ESTABLISHED | LOW | -15 | Dominio > 1 año (WHOIS) |
 | TRUSTED_DOMAIN | LOW | -15 | Dominio de confianza |
 
 ---
 
+## D. TYPOSQUATTING - Regla Agregada en v1.2.1
+
+### Motivacion del cambio
+
+Durante pruebas de validacion del prototipo se identifico una limitacion del motor heuristico: dominios de typosquatting (variaciones ortograficas de marcas conocidas) eran clasificados como SAFE cuando aparecian en el ranking Tranco.
+
+**Caso documentado:** `gooogle.com` (con 3 "o") aparece en Tranco rank 115233 porque recibe trafico real de usuarios que cometen typo. Bajo las reglas originales, el dominio recibia la bonificacion `DOMAIN_IN_TRANCO` (peso -35) y se clasificaba como SAFE, score 0, a pesar de ser una variante clasica de suplantacion de Google.
+
+### Solucion implementada
+
+Se incorporaron 5 mejoras al motor heuristico:
+
+1. **Nueva senal `TYPOSQUATTING`** (peso +50, severidad HIGH):
+   - Usa `difflib.SequenceMatcher` para calcular similitud entre el dominio raiz y cada marca en `KNOWN_BRANDS`.
+   - Umbral de activacion: similitud >= 0.75.
+   - Normalizacion previa de caracteres: `0 -> o`, `1 -> l`, `3 -> e`, `4 -> a`, `5 -> s` (detecta `paypa1`, `g00gle`, `micros0ft`).
+   - Se exceptua del calculo cuando el dominio raiz es exactamente la marca oficial.
+
+2. **Reduccion del threshold de Tranco** de `100000` a `10000`:
+   - Tranco mide popularidad, no legitimidad. Typosquats populares pueden aparecer en Top 100k.
+   - Top 10k es una cota mas conservadora con sitios masivamente reconocidos.
+
+3. **Bloqueo de bonus DOMAIN_IN_TRANCO** cuando hay typosquatting o brand impersonation, aun si el dominio aparece en Tranco.
+
+4. **`BRAND_IMPERSONATION` se activa tambien con typosquatting** (no solo cuando la marca aparece como substring exacto).
+
+5. **VirusTotal se consulta forzadamente** cuando se detecta typosquatting o brand impersonation, sin importar la zona de score.
+
+### Tabla de pesos actualizada (orden por impacto)
+
+| ID | Severidad | Peso | Descripcion |
+|----|-----------|------|-------------|
+| TYPOSQUATTING | HIGH | +50 | Nuevo en v1.2.1 - Similitud con marca >= 0.75 |
+| BRAND_IMPERSONATION | HIGH | +45 | Subido de +31 a +45 |
+| IP_AS_HOST | HIGH | +39 | Sin cambio |
+| DOMAIN_TOO_NEW | HIGH | +35 | Sin cambio |
+| NO_HTTPS | LOW | +34 | Sin cambio |
+
+### Validacion del cambio
+
+Casos de prueba antes/despues del cambio:
+
+| URL | Antes (v1.2.0) | Despues (v1.2.1) |
+|-----|----------------|------------------|
+| `google.com` | SAFE (0) | SAFE (0) - sin cambio |
+| `paypal.com` | SAFE (0) | SAFE (0) - sin cambio |
+| `youtube.com` | SAFE (0) | SAFE (0) - sin cambio |
+| `gooogle.com` | SAFE (0) | HIGH (93) |
+| `goggle.com` | SAFE (0) | HIGH (100) |
+| `g00gle.com` | MEDIUM (60) | HIGH (100) |
+| `googel.com` | SAFE (0) | HIGH (93) |
+| `paypa1.com` | (no probado) | HIGH (100) |
+| `micros0ft.com` | (no probado) | HIGH (100) |
+
+### Componentes modificados
+
+- `backend/app/services/heuristic_predictor.py`: deteccion typosquatting, peso TYPOSQUATTING, condicion `should_consult` VirusTotal, threshold Tranco aplicado.
+- `backend/app/core/config.py`: `TRANCO_RANK_THRESHOLD` reducido.
+- `backend/.env`: `TRANCO_RANK_THRESHOLD=10000`.
+
+---
+
 **FIN DE LA DOCUMENTACION MAESTRA**
 
-*Documento actualizado el 2026-01-19*
-*ALERTA-LINK v1.2.0 - Con WHOIS y Crawler Headless*
+*Documento actualizado el 2026-05-16*
+*ALERTA-LINK v1.2.1 - Con deteccion de typosquatting*
