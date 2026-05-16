@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 from typing import Tuple, List, Dict, Any, Optional
 from urllib.parse import urlparse
+from difflib import SequenceMatcher
 import re
 import math
 
@@ -99,6 +100,7 @@ DEFAULT_WEIGHTS = {
     'IP_AS_HOST': 30,
     'PUNYCODE_DETECTED': 25,
     'BRAND_IMPERSONATION': 45,
+    'TYPOSQUATTING': 50,
     'URL_SHORTENER': 15,
     'PASTE_SERVICE': 20,
     'HOSTING_PLATFORM': 15,
@@ -255,6 +257,39 @@ class HeuristicPredictor:
                         features['brand_impersonation'] = True
                     break
 
+            # Deteccion de typosquatting (similitud con marcas, no substring exacto)
+            # Detecta variantes tipo gooogle.com, paypa1.com, micros0ft.com, etc.
+            features['typosquatting_detected'] = False
+            features['typosquatting_brand'] = None
+            features['typosquatting_similarity'] = 0.0
+            domain_root = domain.split('.')[0].lower() if domain else ''
+            # Normalizar dominio para comparar (reemplazar digitos que parecen letras)
+            domain_normalized = domain_root.translate(str.maketrans('01345', 'olesa'))
+            if len(domain_root) >= 4:
+                for brand in KNOWN_BRANDS:
+                    if len(brand) < 4:
+                        continue
+                    # Saltar si la marca aparece exactamente como root (es la marca real)
+                    official = OFFICIAL_DOMAINS.get(brand, f"{brand}.com")
+                    if domain == official or domain.endswith('.' + official):
+                        continue
+                    if domain_root == brand:
+                        continue
+                    # Calcular similitud con dominio original y normalizado
+                    sim_raw = SequenceMatcher(None, domain_root, brand).ratio()
+                    sim_norm = SequenceMatcher(None, domain_normalized, brand).ratio()
+                    similarity = max(sim_raw, sim_norm)
+                    # Umbral 0.75: detecta gooogle/google (0.92), paypa1/paypal (1.0 normalizado),
+                    # g00gle/google (1.0 normalizado), googel/google (0.83)
+                    if similarity >= 0.75:
+                        features['typosquatting_detected'] = True
+                        features['typosquatting_brand'] = brand
+                        features['typosquatting_similarity'] = round(similarity, 3)
+                        # Tambien marcar brand_impersonation para activar la regla clasica
+                        features['brand_mentioned'] = brand
+                        features['brand_impersonation'] = True
+                        break
+
             # Dominio de confianza
             features['is_trusted'] = any(td in domain for td in TRUSTED_DOMAINS)
 
@@ -314,6 +349,25 @@ class HeuristicPredictor:
                     "official_domain": official
                 },
                 explanation=f"PHISHING: Este sitio '{domain}' intenta suplantar a '{brand.upper()}'. El dominio oficial es '{official}'."
+            ))
+
+        # Typosquatting (similitud con marca conocida)
+        if features.get('typosquatting_detected'):
+            brand = features.get('typosquatting_brand', 'desconocida')
+            similarity = features.get('typosquatting_similarity', 0)
+            official = OFFICIAL_DOMAINS.get(brand, f"{brand}.com")
+            signals.append(Signal(
+                id="TYPOSQUATTING",
+                severity=Severity.HIGH,
+                weight=self.weights['TYPOSQUATTING'],
+                evidence={
+                    "brand": brand,
+                    "fake_domain": domain,
+                    "official_domain": official,
+                    "similarity": similarity,
+                    "technique": "edit_distance"
+                },
+                explanation=f"TYPOSQUATTING: El dominio '{domain}' es muy similar ({int(similarity*100)}%) a la marca '{brand.upper()}' (oficial: '{official}'). Es un patron clasico de suplantacion."
             ))
 
         # URL Shortener
@@ -467,23 +521,37 @@ class HeuristicPredictor:
         # === VERIFICACION CON TRANCO ===
         in_tranco = False
         tranco_rank = 0
+        threshold = settings.TRANCO_RANK_THRESHOLD
 
         if use_tranco and tranco_service.enabled:
             try:
-                in_tranco, tranco_rank = tranco_service.check_url(url)
+                tranco_found, raw_rank = tranco_service.check_url(url)
 
-                if in_tranco and tranco_rank:
-                    # Bonificacion por estar en Tranco (excepto hosting platforms)
-                    if not features.get('hosting_platform'):
+                # Solo considerar legitimo si esta dentro del threshold configurado.
+                # Esto evita que typosquats populares (gooogle.com, etc.) reciban bonus
+                # solo por aparecer en Tranco con un rank bajo.
+                if tranco_found and raw_rank and raw_rank <= threshold:
+                    in_tranco = True
+                    tranco_rank = raw_rank
+
+                    # Bonificacion adicional: no aplicar si hay typosquatting o
+                    # brand impersonation, aunque el dominio "este" en Tranco.
+                    if (not features.get('hosting_platform')
+                            and not features.get('typosquatting_detected')
+                            and not features.get('brand_impersonation')):
                         bonus = self.weights['DOMAIN_IN_TRANCO']
                         score = max(0, score + bonus)  # bonus es negativo
                         signals.append(Signal(
                             id="DOMAIN_IN_TRANCO",
                             severity=Severity.LOW,
                             weight=bonus,
-                            evidence={"rank": tranco_rank},
-                            explanation=f"Dominio verificado en Tranco Top 100k (rank: {tranco_rank})."
+                            evidence={"rank": tranco_rank, "threshold": threshold},
+                            explanation=f"Dominio verificado en Tranco Top {threshold} (rank: {tranco_rank})."
                         ))
+                elif tranco_found and raw_rank:
+                    # Dominio en Tranco pero por debajo del threshold:
+                    # no se considera "confiable", solo lo registramos como info.
+                    logger.debug(f"Dominio {url} en Tranco con rank {raw_rank} > threshold {threshold}, no se aplica bonus")
             except Exception as e:
                 logger.warning(f"Error consultando Tranco: {e}")
 
@@ -556,10 +624,16 @@ class HeuristicPredictor:
 
         # === VERIFICACION CON VIRUSTOTAL ===
         if use_virustotal and virustotal_service.enabled:
-            # Consultar VT si hay incertidumbre o es hosting platform
+            # Consultar VT si:
+            # - Score en zona gris (30-70)
+            # - Es plataforma de hosting publico
+            # - No esta en Tranco y no es trusted
+            # - Hay typosquatting o suplantacion de marca (fuerza VT aunque score sea bajo)
             should_consult = (
                 30 <= score <= 70 or
                 features.get('hosting_platform') or
+                features.get('typosquatting_detected') or
+                features.get('brand_impersonation') or
                 (not in_tranco and not features.get('is_trusted'))
             )
 
