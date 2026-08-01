@@ -6,10 +6,12 @@ Rate Limit: 30 requests/minuto por IP
 
 import logging
 from datetime import datetime
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 
@@ -31,7 +33,9 @@ from app.services.heuristic_predictor import heuristic_predictor
 from app.services.tranco_service import tranco_service
 from app.services.virustotal_service import virustotal_service
 from app.services.crawler_service import crawler_service
-from app.schemas.analyze import Signal, Severity
+from app.schemas.analyze import Signal, Severity, RiskLevel
+from app.db.dependencies import get_db_optional
+from app.models import AnalysisResult
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -62,7 +66,11 @@ def determine_mode(requested_mode: ConnectionMode) -> tuple[ConnectionMode, bool
 
 @router.post("/analyze", response_model=AnalyzeResponse, tags=["Analysis"])
 @limiter.limit("30/minute")
-async def analyze_url(request: Request, data: AnalyzeRequest):
+async def analyze_url(
+    request: Request,
+    data: AnalyzeRequest,
+    db: Optional[Session] = Depends(get_db_optional)
+):
     """
     Analiza una URL y devuelve score de riesgo con señales explicables.
 
@@ -85,13 +93,18 @@ async def analyze_url(request: Request, data: AnalyzeRequest):
         mode_used, use_tranco, use_virustotal = determine_mode(data.mode)
         model_used = data.model
 
-        logger.info(f"Analizando URL con modelo {model_used.value}, modo {mode_used.value}: tranco={use_tranco}, vt={use_virustotal}")
+        # WHOIS es una consulta de red igual que Tranco o VirusTotal, asi que
+        # solo debe ejecutarse en modo online. En offline el analisis queda
+        # restringido a las reglas locales.
+        use_whois = mode_used == ConnectionMode.ONLINE
+
+        logger.info(f"Analizando URL con modelo {model_used.value}, modo {mode_used.value}: tranco={use_tranco}, vt={use_virustotal}, whois={use_whois}")
 
         # Seleccionar el modelo correcto
         if model_used == ModelType.ML:
             # Modelo ML (GradientBoosting)
             score, probability, risk_level, signals = predictor.predict(
-                data.url,
+                normalized_url,
                 use_tranco=use_tranco,
                 use_virustotal=use_virustotal
             )
@@ -99,9 +112,10 @@ async def analyze_url(request: Request, data: AnalyzeRequest):
         else:
             # Modelo Heuristico (reglas con pesos calibrados)
             score, probability, risk_level, signals = heuristic_predictor.predict(
-                data.url,
+                normalized_url,
                 use_tranco=use_tranco,
-                use_virustotal=use_virustotal
+                use_virustotal=use_virustotal,
+                use_whois=use_whois
             )
             recommendations = heuristic_predictor.get_recommendations(risk_level, signals)
 
@@ -109,7 +123,7 @@ async def analyze_url(request: Request, data: AnalyzeRequest):
         apis_consulted = ApisConsulted(
             tranco=use_tranco and tranco_service.enabled,
             virustotal=any(s.id.startswith("VIRUSTOTAL") for s in signals),
-            database=False  # TODO: implementar cuando BD esté activa
+            database=False  # se actualiza mas abajo segun si se persistio el resultado
         )
 
         # Crawl result
@@ -178,17 +192,15 @@ async def analyze_url(request: Request, data: AnalyzeRequest):
                         signals.append(signal)
                         score = min(100, score + sig_data['weight'])
 
-                    # Recalcular nivel de riesgo
+                    # Recalcular nivel de riesgo con los mismos umbrales que
+                    # usan los predictores (0 / 1-30 / 31-70 / 71+)
                     if score == 0:
-                        risk_level = risk_level  # Mantener
+                        risk_level = RiskLevel.SAFE
                     elif score <= 30:
-                        from app.schemas.analyze import RiskLevel
                         risk_level = RiskLevel.LOW
                     elif score <= 70:
-                        from app.schemas.analyze import RiskLevel
                         risk_level = RiskLevel.MEDIUM
                     else:
-                        from app.schemas.analyze import RiskLevel
                         risk_level = RiskLevel.HIGH
 
                 else:
@@ -212,6 +224,42 @@ async def analyze_url(request: Request, data: AnalyzeRequest):
 
         end_time = datetime.now()
         duration_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        # === GUARDAR RESULTADO EN BASE DE DATOS ===
+        tranco_verified = any(s.id == "DOMAIN_IN_TRANCO" for s in signals)
+        tranco_rank_value = next(
+            (s.evidence.get("rank") for s in signals if s.id == "DOMAIN_IN_TRANCO"), None
+        )
+        vt_checked = any(s.id.startswith("VIRUSTOTAL") for s in signals)
+        vt_detections = next(
+            (s.evidence.get("malicious_count") for s in signals if s.id == "VIRUSTOTAL_DETECTION"), None
+        )
+
+        db_saved = False
+        if db is not None:
+            try:
+                result_record = AnalysisResult.create(
+                    url=data.url,
+                    score=score,
+                    risk_level=risk_level.value,
+                    signals=[s.model_dump() for s in signals],
+                    ml_score=score if model_used == ModelType.ML else None,
+                    heuristic_score=score if model_used != ModelType.ML else None,
+                    tranco_verified=tranco_verified,
+                    tranco_rank=tranco_rank_value,
+                    virustotal_checked=vt_checked,
+                    virustotal_detections=vt_detections,
+                    mode_used=mode_used.value,
+                    duration_ms=duration_ms
+                )
+                db.add(result_record)
+                db.flush()
+                db_saved = True
+                logger.info(f"Analisis guardado en BD (id={result_record.id})")
+            except Exception as e:
+                logger.error(f"Error guardando analysis_result: {e}")
+
+        apis_consulted.database = db_saved
 
         return AnalyzeResponse(
             url=data.url,

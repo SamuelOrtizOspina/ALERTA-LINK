@@ -236,24 +236,46 @@ class HeuristicPredictor:
             features['contains_ip'] = bool(re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', domain))
             features['has_punycode'] = 'xn--' in domain
             features['has_at_symbol'] = '@' in url
-            features['shortener_detected'] = any(s in domain for s in SHORTENERS)
-            features['paste_service_detected'] = any(p in domain for p in PASTE_SERVICES)
-            features['hosting_platform'] = any(h in domain for h in HOSTING_PLATFORMS)
+            features['shortener_detected'] = self._domain_matches(domain, SHORTENERS)
+            features['paste_service_detected'] = self._domain_matches(domain, PASTE_SERVICES)
+            features['hosting_platform'] = self._domain_matches(domain, HOSTING_PLATFORMS)
 
-            # Palabras sospechosas
-            suspicious_count = sum(1 for w in SUSPICIOUS_WORDS if w in full_url)
-            features['suspicious_words_count'] = suspicious_count
-            features['suspicious_words_found'] = [w for w in SUSPICIOUS_WORDS if w in full_url][:5]
+            # Palabras sospechosas.
+            # Una marca no cuenta como palabra sospechosa cuando la URL esta en
+            # su propio dominio oficial: 'whatsapp' en whatsapp.com es legitimo,
+            # pero 'whatsapp' en whatsapp-verify.tk no lo es.
+            host = domain.split(':')[0]
+            host_sin_www = host[4:] if host.startswith('www.') else host
+            suspicious_found = []
+            for w in SUSPICIOUS_WORDS:
+                if w not in full_url:
+                    continue
+                if w in KNOWN_BRANDS:
+                    official = OFFICIAL_DOMAINS.get(w, f"{w}.com")
+                    if host_sin_www == official or host_sin_www.endswith('.' + official):
+                        continue
+                suspicious_found.append(w)
 
-            # Deteccion de marca
+            features['suspicious_words_count'] = len(suspicious_found)
+            features['suspicious_words_found'] = suspicious_found[:5]
+
+            # Dominio de confianza (se calcula antes que la marca porque la
+            # deteccion de suplantacion lo usa como salvaguarda)
+            features['is_trusted'] = self._domain_matches(domain, TRUSTED_DOMAINS)
+
+            # Deteccion de marca.
+            # Hay suplantacion cuando la URL menciona una marca pero el host NO
+            # es su dominio oficial (ni un subdominio suyo). Se compara por
+            # sufijo y no por substring: 'paypal.com' esta contenido dentro de
+            # 'paypal.com.seguro-login.xyz', que es justamente el ataque.
             features['brand_mentioned'] = None
             features['brand_impersonation'] = False
             for brand in KNOWN_BRANDS:
                 if brand in full_url:
                     features['brand_mentioned'] = brand
                     official = OFFICIAL_DOMAINS.get(brand, f"{brand}.com")
-                    # Es suplantacion si menciona la marca pero no es el dominio oficial
-                    if official not in domain and brand not in domain.split('.')[0]:
+                    en_dominio_oficial = self._domain_matches(domain, [official])
+                    if not en_dominio_oficial and not features['is_trusted']:
                         features['brand_impersonation'] = True
                     break
 
@@ -290,14 +312,29 @@ class HeuristicPredictor:
                         features['brand_impersonation'] = True
                         break
 
-            # Dominio de confianza
-            features['is_trusted'] = any(td in domain for td in TRUSTED_DOMAINS)
+            # (is_trusted ya se calculo antes de la deteccion de marca)
 
         except Exception as e:
             logger.error(f"Error extrayendo features: {e}")
             features['error'] = str(e)
 
         return features
+
+    @staticmethod
+    def _domain_matches(domain: str, candidates) -> bool:
+        """
+        Verifica si el dominio ES uno de los candidatos o un subdominio suyo.
+
+        Se usa comparacion exacta o por sufijo en lugar de substring porque
+        's in domain' produce falsos positivos: 't.co' esta contenido en
+        'microsoft.com' y 'gov.co' en 'falso-gov.co.atacante.xyz'.
+        """
+        if not domain:
+            return False
+        host = domain.split(':')[0]
+        if host.startswith('www.'):
+            host = host[4:]
+        return any(host == c or host.endswith('.' + c) for c in candidates)
 
     def _calculate_entropy(self, text: str) -> float:
         """Calcula entropia de Shannon del texto."""

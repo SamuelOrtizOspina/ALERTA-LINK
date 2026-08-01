@@ -237,9 +237,29 @@ class ResultScreen extends StatelessWidget {
   }
 
   Widget _buildSignalItem(Signal signal) {
-    final isPositive = signal.weight < 0;
-    final color = isPositive ? Colors.green : _getSeverityColor(signal.severity);
-    final icon = isPositive ? Icons.check_circle : _getSeverityIcon(signal.severity);
+    // Tres tipos de senal:
+    // - Positiva (peso < 0): bonificacion de confianza (verde)
+    // - Informativa (peso == 0): solo contexto, no suma al score (gris)
+    // - De riesgo (peso > 0): usa el color segun su severidad
+    final bool isPositive = signal.weight < 0;
+    final bool isInformational = signal.weight == 0;
+
+    final Color color;
+    final IconData icon;
+    final String badgeText;
+    if (isPositive) {
+      color = Colors.green;
+      icon = Icons.check_circle;
+      badgeText = 'CONFIANZA';
+    } else if (isInformational) {
+      color = Colors.blueGrey;
+      icon = Icons.info_outline;
+      badgeText = 'INFORMATIVA';
+    } else {
+      color = _getSeverityColor(signal.severity);
+      icon = _getSeverityIcon(signal.severity);
+      badgeText = signal.severity.toUpperCase();
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -258,11 +278,26 @@ class ResultScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  signal.message,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 4),
+                // Nombre de la senal detectada (ej: NO_HTTPS, BRAND_IMPERSONATION)
+                if (signal.id.isNotEmpty)
+                  Text(
+                    signal.id,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                // Explicacion en lenguaje sencillo
+                if (signal.message.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    signal.message,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+                  ),
+                ],
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Container(
@@ -272,13 +307,15 @@ class ResultScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        signal.severity.toUpperCase(),
+                        badgeText,
                         style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Peso: ${signal.weight > 0 ? '+' : ''}${signal.weight}',
+                      isInformational
+                          ? 'No suma al puntaje'
+                          : 'Peso: ${signal.weight > 0 ? '+' : ''}${signal.weight}',
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ],

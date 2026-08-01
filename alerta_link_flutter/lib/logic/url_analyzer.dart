@@ -10,7 +10,10 @@ class UrlAnalyzer {
   static String _currentMode = 'online';
 
   /// Modelo de analisis actual: 'ml' o 'heuristic'
-  static String _currentModel = 'ml';
+  ///
+  /// Por defecto se usa el heuristico: es el motor con pesos calibrados
+  /// y el que corresponde a los resultados reportados en la evaluacion.
+  static String _currentModel = 'heuristic';
 
   /// Historial de analisis (en memoria, podria ser SQLite)
   static final List<UrlAnalysis> _history = [];

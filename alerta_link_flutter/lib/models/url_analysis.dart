@@ -146,7 +146,8 @@ class Signal {
   factory Signal.fromJson(Map<String, dynamic> json) {
     return Signal(
       id: json['id'] ?? '',
-      message: json['message'] ?? '',
+      // El backend envia el texto en 'explanation'; se mantiene 'message' como respaldo
+      message: json['explanation'] ?? json['message'] ?? '',
       severity: json['severity'] ?? 'info',
       weight: json['weight'] ?? 0,
       category: json['category'] ?? 'other',
