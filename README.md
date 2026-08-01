@@ -475,22 +475,27 @@ Reporta URLs sospechosas desde la app movil.
 ### Entrenar Modelo
 
 ```bash
-# 1. Entrenar modelo
-cd backend
-python -m scripts.train_step1
+# 1. Regenerar splits train/val/test (estratificados, sin fuga de datos)
+python scripts/rebuild_splits.py
 
-# 2. Evaluar modelo
-python -m scripts.evaluate_step1
+# 2. Entrenar y evaluar sobre test held-out
+python scripts/train_model_v3.py
+
+# 3. Actualizar AUTHORIZED_MODEL_HASH en backend/app/services/predictor.py
+#    con el hash que imprime el paso anterior
 ```
 
 ### Metricas del Modelo ML
 
+Modelo v3 (GradientBoosting, sin las features in_tranco/tranco_rank que
+presentaban fuga de datos), medido sobre 1200 URLs held-out:
+
 | Metrica | Valor |
 |---------|-------|
-| Accuracy | 97.5% |
-| Precision | 98.1% |
-| Recall | 96.8% |
-| F1-Score | 97.4% |
+| Accuracy | 95.9% |
+| Precision | 93.0% |
+| Recall | 99.3% |
+| F1-Score | 96.1% |
 
 ### Metricas del Modelo Heuristico
 
@@ -507,32 +512,35 @@ python -m scripts.evaluate_step1
 
 ### Construccion de Datos
 ```bash
-# Dataset grande con verificacion VirusTotal (recomendado)
-python scripts/build_large_dataset.py
+# Dataset maestro desde fuentes externas (requiere descargar las fuentes)
+python scripts/build_dataset.py
 
-# Dataset simple
-python scripts/build_training_dataset.py
+# Regenerar splits train/val/test estratificados sin fuga de datos
+python scripts/rebuild_splits.py
 ```
 
-### Entrenamiento
+### Entrenamiento y Calibracion
 ```bash
-# Entrenar modelo baseline
-python scripts/train_step1.py
+# Entrenar el modelo ML y evaluarlo sobre test held-out
+python scripts/train_model_v3.py
 
-# Evaluar modelo
-python scripts/evaluate_step1.py
+# Calibrar los pesos del motor heuristico (usa el motor real del backend)
+python scripts/calibrate_heuristic_weights.py
 ```
 
-### Pruebas
+### Evaluacion
 ```bash
-# Test del predictor completo
-python scripts/test_real_predictor.py
+# Motor heuristico en modo offline puro (metodologia del Capitulo IV)
+python scripts/evaluate_offline.py test.csv
 
-# Test integracion VirusTotal
-python scripts/test_virustotal_integration.py
+# Reporte completo de ML con figuras para la tesis
+python scripts/ml_evaluation_complete.py
+```
 
-# Test integracion Tranco
-python scripts/test_tranco_integration.py
+### Pruebas del backend
+```bash
+cd backend
+python -m pytest tests/ -q
 ```
 
 ### Datos de VirusTotal

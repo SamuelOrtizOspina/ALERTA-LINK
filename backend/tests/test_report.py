@@ -20,7 +20,9 @@ def test_report_phishing(client, suspicious_url):
     data = response.json()
     assert data["status"] == "received"
     assert "report_id" in data
-    assert data["message"] == "Gracias. Tu reporte fue registrado."
+    # El mensaje incluye el medio de almacenamiento usado: "(jsonl)" cuando
+    # no hay base de datos configurada, o el registro directo con PostgreSQL.
+    assert data["message"].startswith("Gracias. Tu reporte fue registrado")
 
 
 def test_report_malware(client):
