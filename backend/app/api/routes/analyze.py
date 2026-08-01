@@ -166,19 +166,27 @@ async def analyze_url(
                         }
                     )
 
-                    # Generar señales del crawl y agregarlas
-                    # Solo si el sitio NO está en Tranco (evitar falsos positivos en sitios legítimos)
-                    is_in_tranco = any(s.id == "DOMAIN_IN_TRANCO" for s in signals)
+                    # En un dominio ya reconocido como legitimo se conservan
+                    # solo las senales criticas del crawler, para no penalizarlo
+                    # por cosas normales (mencionar una marca, tener campos
+                    # ocultos). Se aceptan las dos vias de confianza: Tranco
+                    # (modo online) y la lista local (unica disponible en modo
+                    # offline o sin API key).
+                    dominio_confiable = any(
+                        s.id in ("DOMAIN_IN_TRANCO", "TRUSTED_DOMAIN") for s in signals
+                    )
 
                     crawl_signals = crawler_service.generate_signals_from_crawl(
                         crawl_data, normalized_url
                     )
 
-                    # Filtrar señales del crawl si el sitio está en Tranco
-                    if is_in_tranco:
-                        # Solo mantener señales críticas para sitios de Tranco
-                        critical_signals = ['SSL_CERTIFICATE_ERROR', 'FORM_SUBMITS_EXTERNALLY', 'REDIRECT_TO_DIFFERENT_DOMAIN']
-                        crawl_signals = [s for s in crawl_signals if s['id'] in critical_signals]
+                    if dominio_confiable:
+                        senales_criticas = [
+                            'SSL_CERTIFICATE_ERROR',
+                            'FORM_SUBMITS_EXTERNALLY',
+                            'REDIRECT_TO_DIFFERENT_DOMAIN',
+                        ]
+                        crawl_signals = [s for s in crawl_signals if s['id'] in senales_criticas]
 
                     # Convertir señales del crawl al formato Signal y agregar al score
                     for sig_data in crawl_signals:
