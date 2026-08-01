@@ -211,6 +211,10 @@ async def analyze_url(
                     else:
                         risk_level = RiskLevel.HIGH
 
+                    # La probabilidad se deriva del score, asi que debe
+                    # recalcularse tras el aporte del crawler.
+                    probability = score / 100.0
+
                 else:
                     crawl_result = CrawlResult(
                         enabled=True,
@@ -257,8 +261,12 @@ async def analyze_url(
                     tranco_rank=tranco_rank_value,
                     virustotal_checked=vt_checked,
                     virustotal_detections=vt_detections,
+                    model_used=model_used.value,
                     mode_used=mode_used.value,
-                    duration_ms=duration_ms
+                    duration_ms=duration_ms,
+                    probability=round(probability, 4),
+                    recommendations=recommendations,
+                    crawl=crawl_result.model_dump(mode="json")
                 )
                 db.add(result_record)
                 db.flush()

@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 import '../models/url_analysis.dart';
+import '../services/api_service.dart';
 
 /// Pantalla de resultado del analisis (semaforo)
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   final UrlAnalysis analysis;
 
   const ResultScreen({super.key, required this.analysis});
+
+  @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  /// Evita reportes duplicados del mismo analisis
+  bool _yaReportado = false;
+  bool _enviandoReporte = false;
+
+  UrlAnalysis get analysis => widget.analysis;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +49,10 @@ class ResultScreen extends StatelessWidget {
 
             // Recomendaciones
             _buildRecommendationsCard(),
+            const SizedBox(height: 16),
+
+            // Reporte voluntario (RF-10)
+            _buildReportCard(),
             const SizedBox(height: 16),
 
             // Info del analisis
@@ -386,6 +402,174 @@ class ResultScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // RF-10: Reporte voluntario de enlaces sospechosos
+  // ==========================================================
+
+  Widget _buildReportCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _yaReportado ? Icons.verified : Icons.flag_outlined,
+                  color: _yaReportado ? Colors.green : Colors.orange.shade700,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _yaReportado ? 'Enlace reportado' : 'Reportar este enlace',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _yaReportado
+                  ? 'Gracias por contribuir. Tu reporte ayuda a proteger a otras personas.'
+                  : 'Si crees que este enlace es fraudulento, puedes reportarlo de '
+                    'forma anonima. No se envian datos personales.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: (_yaReportado || _enviandoReporte) ? null : _mostrarDialogoReporte,
+                icon: _enviandoReporte
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(_yaReportado ? Icons.check : Icons.flag),
+                label: Text(
+                  _enviandoReporte
+                      ? 'Enviando...'
+                      : _yaReportado
+                          ? 'Ya reportado'
+                          : 'Reportar enlace sospechoso',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _yaReportado ? Colors.green : Colors.orange.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pide confirmacion antes de enviar, como exige el RF-10.
+  /// Permite elegir el tipo de amenaza y agregar un comentario opcional.
+  Future<void> _mostrarDialogoReporte() async {
+    String tipoSeleccionado = 'phishing';
+    final controladorComentario = TextEditingController();
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (contextoDialogo) => StatefulBuilder(
+        builder: (contexto, actualizarDialogo) => AlertDialog(
+          title: const Text('Confirmar reporte'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  analysis.url,
+                  style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 16),
+                // Los valores deben coincidir con el enum del backend:
+                // phishing | malware | scam | unknown
+                DropdownButtonFormField<String>(
+                  initialValue: tipoSeleccionado,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de amenaza',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'phishing', child: Text('Phishing / suplantacion')),
+                    DropdownMenuItem(value: 'malware', child: Text('Malware')),
+                    DropdownMenuItem(value: 'scam', child: Text('Estafa')),
+                    DropdownMenuItem(value: 'unknown', child: Text('No estoy seguro')),
+                  ],
+                  onChanged: (valor) =>
+                      actualizarDialogo(() => tipoSeleccionado = valor ?? 'phishing'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controladorComentario,
+                  maxLines: 2,
+                  maxLength: 500,
+                  decoration: const InputDecoration(
+                    labelText: 'Comentario (opcional)',
+                    hintText: 'Ej: lo recibi por SMS del banco',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                Text(
+                  'El reporte es anonimo: solo se envia el enlace, el tipo y tu comentario.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(contextoDialogo, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(contextoDialogo, true),
+              child: const Text('Enviar reporte'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmado != true) return;
+
+    setState(() => _enviandoReporte = true);
+
+    final comentario = controladorComentario.text.trim();
+    final exito = await ApiService.reportUrl(
+      url: analysis.url,
+      label: tipoSeleccionado,
+      comment: comentario.isEmpty ? null : comentario,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _enviandoReporte = false;
+      _yaReportado = exito;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(exito
+            ? 'Reporte enviado. Gracias por contribuir.'
+            : 'No se pudo enviar el reporte. Revisa tu conexion.'),
+        backgroundColor: exito ? Colors.green : Colors.red,
       ),
     );
   }
