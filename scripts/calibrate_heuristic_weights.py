@@ -286,12 +286,20 @@ def generate_signals(url: str, features: Dict[str, Any], weights: Dict[str, floa
     return signals
 
 
-def load_datasets() -> pd.DataFrame:
-    """Carga y combina todos los datasets."""
+def load_datasets(files: List[str] = None) -> pd.DataFrame:
+    """
+    Carga y combina los datasets indicados.
+
+    IMPORTANTE: por defecto se usan solo train.csv y val.csv. El conjunto
+    test.csv queda excluido a proposito para poder medir el resultado de la
+    calibracion sobre datos que el optimizador nunca vio. Incluir test.csv
+    aqui invalidaria cualquier metrica reportada sobre el.
+    """
     print("\n[*] Cargando datasets...")
 
     datasets = []
-    files = ['train.csv', 'val.csv', 'test.csv']
+    if files is None:
+        files = ['train.csv', 'val.csv']
 
     for file in files:
         path = DATASETS_DIR / file
@@ -489,12 +497,16 @@ def save_calibrated_weights(weights: Dict[str, float], metrics: Dict):
         'weights': weights
     }
 
-    MODELS_DIR.mkdir(exist_ok=True)
+    # El motor heuristico lee los pesos desde backend/models/, no desde la
+    # carpeta models/ de la raiz. Se escribe en ambas ubicaciones para que la
+    # calibracion tenga efecto real sobre el backend en ejecucion.
+    destinos = [OUTPUT_FILE, BASE_DIR / 'backend' / 'models' / 'heuristic_weights.json']
 
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
-
-    print(f"\n[SAVE] Pesos calibrados guardados en: {OUTPUT_FILE}")
+    for destino in destinos:
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        with open(destino, 'w', encoding='utf-8') as f:
+            json.dump(output, f, indent=2, ensure_ascii=False)
+        print(f"\n[SAVE] Pesos calibrados guardados en: {destino}")
 
 
 def main():

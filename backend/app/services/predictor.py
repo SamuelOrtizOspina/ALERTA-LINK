@@ -41,8 +41,10 @@ class URLPredictor:
     # Hash SHA256 del modelo autorizado
     # IMPORTANTE: Actualizar este hash cuando se reentrene el modelo
     # Generar con: python -c "import hashlib; print(hashlib.sha256(open('models/step1_baseline.pkl','rb').read()).hexdigest())"
-    # Modelo v2.0 - Entrenado con dataset balanceado (incluye legítimos NO en Tranco)
-    AUTHORIZED_MODEL_HASH = "dc62a6098c0dd585bae3e77599d8396cf623f8df2846dbeffde650f9251ba43f"
+    # Modelo v3.0 - GradientBoosting entrenado por scripts/train_model_v3.py
+    # sobre los splits regenerados sin fuga de datos, excluyendo in_tranco y
+    # tranco_rank. Test held-out (1200 URLs): accuracy 95,9% / F1 0,961.
+    AUTHORIZED_MODEL_HASH = "6fc9d38c77001e3126050420198bac08bd65194fe76f7013e50801b70ee85117"
 
     def __init__(self):
         self.pipeline = None
