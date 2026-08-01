@@ -51,7 +51,11 @@ class AnalyzeRequest(BaseModel):
     """Request para analizar una URL."""
     url: str = Field(..., min_length=10, max_length=2048, description="URL a analizar")
     mode: ConnectionMode = Field(default=ConnectionMode.ONLINE, description="Modo de conexion")
-    model: ModelType = Field(default=ModelType.ML, description="Tipo de modelo: ml o heuristic")
+    # Por defecto se usa el motor heuristico: es el que tiene pesos
+    # calibrados y el evaluado en la tesis. Asi los clientes que no
+    # especifican modelo (ej. el analisis automatico de SMS en Android)
+    # quedan alineados con el default de la app.
+    model: ModelType = Field(default=ModelType.HEURISTIC, description="Tipo de modelo: ml o heuristic")
     options: Optional[AnalyzeOptions] = Field(default=None, description="Opciones de analisis")
 
     class Config:
