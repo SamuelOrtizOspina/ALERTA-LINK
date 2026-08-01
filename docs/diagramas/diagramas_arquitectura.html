@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALERTA-LINK · Diagramas de arquitectura verificada</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; }
+  img, svg { max-width: 100%; }
+</style>
+</head>
+<body>
+
+<style>
+  :root {
+    --papel:        #F5F8FA;
+    --lamina:       #FFFFFF;
+    --tinta:        #17222E;
+    --tinta-suave:  #55677A;
+    --linea:        #D5DFE7;
+    --acento:       #1B5B87;
+    --acento-tenue: #E8F0F6;
+    --seguro:       #2E7355;
+    --alerta:       #A9701A;
+    --critico:      #A8362C;
+
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono:  ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+
+    --medida: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --papel:        #0F171F;
+      --lamina:       #FFFFFF;
+      --tinta:        #E4EBF1;
+      --tinta-suave:  #93A5B5;
+      --linea:        #26333F;
+      --acento:       #6DA9CE;
+      --acento-tenue: #172733;
+      --seguro:       #62B189;
+      --alerta:       #D6A64B;
+      --critico:      #DE7A6E;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --papel:        #0F171F;
+    --lamina:       #FFFFFF;
+    --tinta:        #E4EBF1;
+    --tinta-suave:  #93A5B5;
+    --linea:        #26333F;
+    --acento:       #6DA9CE;
+    --acento-tenue: #172733;
+    --seguro:       #62B189;
+    --alerta:       #D6A64B;
+    --critico:      #DE7A6E;
+  }
+
+  :root[data-theme="light"] {
+    --papel:        #F5F8FA;
+    --lamina:       #FFFFFF;
+    --tinta:        #17222E;
+    --tinta-suave:  #55677A;
+    --linea:        #D5DFE7;
+    --acento:       #1B5B87;
+    --acento-tenue: #E8F0F6;
+    --seguro:       #2E7355;
+    --alerta:       #A9701A;
+    --critico:      #A8362C;
+  }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: var(--sans);
+    font-size: 16.5px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+  }
+
+  .envoltura {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Portada ---------- */
+
+  header.portada {
+    padding: 4.5rem 0 2.5rem;
+    border-bottom: 2px solid var(--tinta);
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--acento);
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 5vw, 3.1rem);
+    line-height: 1.1;
+    font-weight: 400;
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+  }
+
+  .bajada {
+    max-width: var(--medida);
+    color: var(--tinta-suave);
+    font-size: 1.02rem;
+    margin: 0;
+  }
+
+  /* ---------- Aviso ---------- */
+
+  .aviso {
+    margin: 2.5rem 0 0;
+    padding: 1.15rem 1.35rem;
+    background: var(--acento-tenue);
+    border-left: 3px solid var(--acento);
+    max-width: var(--medida);
+  }
+
+  .aviso p { margin: 0; font-size: 0.95rem; }
+  .aviso p + p { margin-top: 0.6rem; }
+
+  /* ---------- Secciones ---------- */
+
+  section.lamina {
+    padding-top: 3.5rem;
+  }
+
+  .encabezado-lamina {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .referencia {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+  }
+
+  .referencia strong { color: var(--acento); font-weight: 600; }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(1.35rem, 2.6vw, 1.75rem);
+    font-weight: 400;
+    margin: 0;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .contexto {
+    max-width: var(--medida);
+    color: var(--tinta-suave);
+    font-size: 0.96rem;
+    margin: 0 0 1.4rem;
+  }
+
+  /* ---------- Marco del diagrama ----------
+     Fondo claro fijo en ambos temas: estas figuras se pegan en un
+     documento impreso, asi que se presentan como lamina de papel. */
+
+  .marco {
+    background: var(--lamina);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    padding: 1.75rem 1.25rem;
+    overflow-x: auto;
+    box-shadow: 0 1px 2px rgb(23 34 46 / 0.06), 0 8px 24px -12px rgb(23 34 46 / 0.14);
+  }
+
+  .marco pre.mermaid {
+    margin: 0;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    min-width: min-content;
+  }
+
+  figcaption {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--tinta-suave);
+    margin-top: 0.85rem;
+    max-width: var(--medida);
+  }
+
+  figure { margin: 0; }
+
+  /* ---------- Notas de verificacion ---------- */
+
+  .verificado {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--linea);
+    padding-top: 1.1rem;
+    display: grid;
+    gap: 0.55rem;
+    max-width: var(--medida);
+  }
+
+  .verificado h3 {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    margin: 0 0 0.2rem;
+    font-weight: 600;
+  }
+
+  .dato {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: baseline;
+    font-size: 0.9rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px dotted var(--linea);
+  }
+
+  .dato span:last-child {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--acento);
+    white-space: nowrap;
+  }
+
+  .dato.ok span:last-child     { color: var(--seguro); }
+  .dato.ojo span:last-child    { color: var(--alerta); }
+  .dato.malo span:last-child   { color: var(--critico); }
+
+  /* ---------- Tabla de reemplazos ---------- */
+
+  .tabla-envoltura { overflow-x: auto; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.92rem;
+    margin-top: 0.5rem;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.9rem 0.6rem 0;
+    border-bottom: 1px solid var(--linea);
+    vertical-align: top;
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  td code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: var(--acento-tenue);
+    padding: 0.1em 0.35em;
+    border-radius: 2px;
+  }
+
+  .quitar { color: var(--critico); font-weight: 600; }
+  .nuevo  { color: var(--seguro); font-weight: 600; }
+
+  footer {
+    margin-top: 4.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--tinta);
+    font-size: 0.88rem;
+    color: var(--tinta-suave);
+    max-width: var(--medida);
+  }
+
+  footer p { margin: 0 0 0.6rem; }
+
+  a { color: var(--acento); }
+  a:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+  strong { font-weight: 600; }
+</style>
+
+<div class="envoltura">
+
+  <header class="portada">
+    <div class="eyebrow">Anexo técnico · Julio 2026</div>
+    <h1>Diagramas de la arquitectura verificada de ALERTA&#8209;LINK</h1>
+    <p class="bajada">
+      Seis láminas que documentan el sistema tal como se ejecuta hoy, no como se
+      planteó al inicio. Cada una indica qué figura del documento reemplaza y qué
+      se comprobó en ejecución para poder afirmarlo.
+    </p>
+  </header>
+
+  <div class="aviso">
+    <p>
+      <strong>Por qué se rehacen.</strong> El diagrama de secuencia de
+      actualización de reglas describía tres endpoints
+      <code>POST /reglas</code>, <code>GET /reglas/version</code> y
+      <code>GET /reglas/descargar</code> que no existen en el backend. Mostrar
+      un diagrama sin implementación es la clase de detalle que un jurado
+      verifica y objeta.
+    </p>
+    <p>
+      En su lugar entra el ciclo de retroalimentación, que sí está implementado y
+      cubre el mismo objetivo de la Fase 4: mejorar el sistema con datos nuevos.
+    </p>
+  </div>
+
+  <!-- ============================================ 1 -->
+  <section class="lamina">
+    <div class="encabezado-lamina">
+      <div class="referencia">Lámina 1 · reemplaza la figura <strong>11 · Diagrama de componentes</strong></div>
+      <h2>Componentes del sistema</h2>
+    </div>
+    <p class="contexto">
+      Tres capas y cuatro servicios externos. El recuadro punteado marca lo que
+      es opcional: si falta, el sistema degrada a análisis local sin fallar.
+    </p>
+
+    <figure>
+      <div class="marco">
+<pre class="mermaid">
+flowchart TB
+    subgraph cliente["Cliente"]
+        direction LR
+        WEB["App Flutter Web<br/>build release"]
+        AND["App Android<br/>Kotlin nativo"]
+    end
+
+    subgraph backend["Backend FastAPI"]
+        direction TB
+        VAL["Validación y anti-SSRF<br/>security.py"]
+        RUTA["Endpoint /analyze<br/>rate limit 30 por minuto"]
+        subgraph motores["Motores de decisión"]
+            direction LR
+            HEU["Motor heurístico<br/>29 reglas calibradas"]
+            ML["Modelo ML<br/>GradientBoosting"]
+        end
+        FUS["Fusión y clasificación<br/>score 0 a 100"]
+    end
+
+    subgraph datos["Persistencia"]
+        PG[("PostgreSQL 17<br/>6 tablas · 4 triggers")]
+        JSON[("Respaldo JSONL<br/>si no hay base")]
+    end
+
+    subgraph externos["Servicios externos · opcionales"]
+        TR["Tranco<br/>ranking de dominios"]
+        VT["VirusTotal<br/>92 motores"]
+        WH["WHOIS<br/>antigüedad"]
+        PW["Playwright<br/>crawler headless"]
+    end
+
+    WEB --> VAL
+    AND --> VAL
+    VAL --> RUTA
+    RUTA --> motores
+    motores --> FUS
+    FUS --> PG
+    FUS -.-> JSON
+    motores -.-> TR
+    motores -.-> VT
+    motores -.-> WH
+    RUTA -.-> PW
+
+    style externos stroke-dasharray: 5 5
+    style JSON stroke-dasharray: 3 3
+</pre>
+      </div>
+      <figcaption>
+        Lámina 1. Componentes del sistema. Las líneas punteadas indican
+        dependencias opcionales cuya ausencia no interrumpe el análisis.
+      </figcaption>
+    </figure>
+
+    <div class="verificado">
+      <h3>Comprobado en ejecución</h3>
+      <div class="dato ok"><span>Modelo ML cargado y verificado por hash SHA256</span><span>model_loaded: true</span></div>
+      <div class="dato ok"><span>Base de datos activa</span><span>storage: postgresql</span></div>
+      <div class="dato ok"><span>Tranco y VirusTotal respondiendo</span><span>apis: true / true</span></div>
+      <div class="dato ok"><span>Crawler disponible</span><span>Playwright + Chromium</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================ 2 -->
+  <section class="lamina">
+    <div class="encabezado-lamina">
+      <div class="referencia">Lámina 2 · reemplaza la figura <strong>10a · Secuencia de análisis completo</strong></div>
+      <h2>Secuencia del análisis de una URL</h2>
+    </div>
+    <p class="contexto">
+      Incluye dos detalles que el diagrama original omitía y que importan: la
+      predicción se delega a un hilo aparte para no bloquear el servidor durante
+      las esperas de las APIs, y el resultado se persiste antes de responder.
+    </p>
+
+    <figure>
+      <div class="marco">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor U as Usuario
+    participant A as App Flutter
+    participant E as Endpoint /analyze
+    participant H as Hilo de trabajo
+    participant M as Motor
+    participant X as APIs externas
+    participant D as PostgreSQL
+
+    U->>A: Pega la URL y pulsa Analizar
+    A->>A: Normaliza y valida el formato
+    A->>E: POST con url, mode y model
+
+    E->>E: Valida y bloquea IP privada o localhost
+    alt URL inválida o insegura
+        E-->>A: 400 con el motivo
+        A-->>U: Mensaje de error
+    else URL admitida
+        E->>E: Resuelve el modo efectivo
+        E->>H: Delega la predicción
+        Note over E,H: El servidor sigue atendiendo<br/>otras peticiones mientras espera
+
+        H->>M: Extrae 24 características
+        M->>M: Aplica las reglas locales
+
+        opt Modo online
+            M->>X: Consulta Tranco
+            X-->>M: Ranking del dominio
+            alt Score entre 31 y 70, o marca suplantada
+                M->>X: Consulta VirusTotal
+                X-->>M: Motores que lo detectan
+            end
+        end
+
+        M->>M: Suma pesos, recorta a 0 y 100
+        M->>M: Clasifica SAFE, LOW, MEDIUM o HIGH
+        H-->>E: Score, nivel, señales y recomendaciones
+
+        opt Crawler habilitado
+            E->>X: Abre la página sin interactuar
+            X-->>E: Título, formularios y huella HTML
+            E->>E: Recalcula score y nivel
+        end
+
+        E->>D: Guarda el análisis y sus señales
+        D-->>E: Confirmación
+        E-->>A: JSON con el resultado
+        A-->>U: Semáforo, señales y qué hacer
+    end
+</pre>
+      </div>
+      <figcaption>
+        Lámina 2. Secuencia del análisis. El bloque <em>opt</em> marca los pasos
+        que solo ocurren en modo online o con el crawler habilitado.
+      </figcaption>
+    </figure>
+
+    <div class="verificado">
+      <h3>Tiempos medidos</h3>
+      <div class="dato ok"><span>Modo offline, un usuario</span><span>94 a 199 ms</span></div>
+      <div class="dato ok"><span>Modo offline, tres usuarios simultáneos</span><span>808 ms en total</span></div>
+      <div class="dato ok"><span>El servidor responde durante un análisis online</span><span>~100 ms</span></div>
+      <div class="dato ojo"><span>Modo online, limitado por el plan gratuito de VirusTotal</span><span>3,5 a 19,8 s</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================ 3 -->
+  <section class="lamina">
+    <div class="encabezado-lamina">
+      <div class="referencia">Lámina 3 · <span class="nuevo">figura nueva</span> · amplía la sección 7</div>
+      <h2>Cómo se combinan los dos motores</h2>
+    </div>
+    <p class="contexto">
+      Esta es la decisión de diseño que sostiene la explicabilidad del sistema y
+      no estaba dibujada en ninguna parte. El aprendizaje automático nunca puede
+      ocultar una señal grave, porque el resultado toma el mayor de los dos
+      motores y después suma un refuerzo por las señales críticas.
+    </p>
+
+    <figure>
+      <div class="marco">
+<pre class="mermaid">
+flowchart LR
+    URL(["URL normalizada"]) --> F["24 características<br/>léxicas, estructurales<br/>y semánticas"]
+
+    F --> HEU["Motor heurístico<br/>suma de pesos calibrados"]
+    F --> ML["Modelo ML<br/>predict_proba por 100"]
+
+    HEU --> MAX{{"Se toma el mayor<br/>de los dos"}}
+    ML --> MAX
+
+    MAX --> BOOST["Refuerzo por señales críticas<br/>suplantación de marca<br/>IP como host · punycode"]
+
+    BOOST --> DUDA{"¿Score entre<br/>31 y 70?"}
+    DUDA -->|"Sí, hay incertidumbre"| VT["Se consulta VirusTotal<br/>en lugar de suponer"]
+    DUDA -->|No| CLIP
+    VT --> CLIP["Se recorta al rango 0 a 100"]
+
+    CLIP --> N0["SAFE · 0"]
+    CLIP --> N1["LOW · 1 a 30"]
+    CLIP --> N2["MEDIUM · 31 a 70"]
+    CLIP --> N3["HIGH · 71 a 100"]
+
+    style N0 fill:#E6F2EC,stroke:#2E7355,color:#17222E
+    style N1 fill:#F3F1E4,stroke:#8A8A3E,color:#17222E
+    style N2 fill:#F7EDDD,stroke:#A9701A,color:#17222E
+    style N3 fill:#F8E5E2,stroke:#A8362C,color:#17222E
+    style MAX fill:#E8F0F6,stroke:#1B5B87,color:#17222E
+</pre>
+      </div>
+      <figcaption>
+        Lámina 3. Fusión de los dos motores. Cada punto del resultado final es
+        trazable a una regla con nombre, lo que permite explicar el veredicto sin
+        recurrir a la probabilidad del modelo.
+      </figcaption>
+    </figure>
+
+    <div class="verificado">
+      <h3>Rendimiento de cada motor</h3>
+      <div class="dato ok"><span>Modelo ML sin las variables con fuga, sobre 1200 URLs no vistas</span><span>95,9 %</span></div>
+      <div class="dato"><span>Motor heurístico offline, experimento de 203 URLs</span><span>78,8 %</span></div>
+      <div class="dato"><span>Reglas heurísticas implementadas</span><span>29</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================ 4 -->
+  <section class="lamina">
+    <div class="encabezado-lamina">
+      <div class="referencia">Lámina 4 · <span class="quitar">sustituye la figura 10c</span> · Actualización de reglas</div>
+      <h2>Ciclo de retroalimentación con revisión humana</h2>
+    </div>
+    <p class="contexto">
+      La figura 10c mostraba endpoints inexistentes. Esta lámina documenta el
+      mecanismo que sí está implementado y que cumple el mismo propósito de la
+      Fase 4. Dos decisiones deliberadas quedan explícitas en el dibujo: los
+      análisis del propio sistema no se usan para entrenar, y ningún dato entra
+      al conjunto de entrenamiento sin validación manual.
+    </p>
+
+    <figure>
+      <div class="marco">
+<pre class="mermaid">
+flowchart TB
+    U(["Usuario detecta<br/>un enlace fraudulento"]) --> BOT["Pulsa Reportar<br/>y confirma el tipo"]
+    BOT --> REP[("Tabla reports<br/>etiqueta de origen humano")]
+
+    ANA["Análisis realizados<br/>por el sistema"] --> RES[("Tabla analysis_results")]
+    RES -.->|"Se excluye a propósito"| DESC["Contiene lo que el sistema<br/>predijo, no la verdad.<br/>Entrenar con esto<br/>degrada el modelo"]
+
+    REP --> EXP["export_feedback_to_dataset.py<br/>extrae las 24 características"]
+    EXP --> PEND[/"pendiente_revision.csv<br/>marcado revisado = 0"/]
+
+    PEND --> HUM{{"Revisión manual<br/>del investigador"}}
+    HUM -->|Confirmado| MAESTRO[("Conjunto maestro")]
+    HUM -->|Descartado| FUERA(["Se desecha"])
+
+    MAESTRO --> SPLIT["rebuild_splits.py<br/>reparto estratificado"]
+    SPLIT --> TRAIN["train_model_v3.py<br/>entrena y evalúa"]
+    TRAIN --> NUEVO["Modelo nuevo<br/>+ hash a autorizar"]
+    NUEVO --> ANA
+
+    style DESC fill:#F8E5E2,stroke:#A8362C,color:#17222E
+    style HUM fill:#E8F0F6,stroke:#1B5B87,color:#17222E
+    style PEND fill:#F7EDDD,stroke:#A9701A,color:#17222E
+</pre>
+      </div>
+      <figcaption>
+        Lámina 4. Ciclo de retroalimentación. El recuadro rojo explica una
+        exclusión deliberada: realimentar el modelo con sus propias predicciones
+        lo degradaría progresivamente.
+      </figcaption>
+    </figure>
+
+    <div class="verificado">
+      <h3>Comprobado de extremo a extremo</h3>
+      <div class="dato ok"><span>Reportes enviados desde la aplicación y almacenados</span><span>8 registros</span></div>
+      <div class="dato ok"><span>Exportados como filas de entrenamiento etiquetadas</span><span>8 filas · 28 columnas</span></div>
+      <div class="dato ok"><span>Marcados como pendientes de revisión</span><span>revisado = 0</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================ 5 -->
+  <section class="lamina">
+    <div class="encabezado-lamina">
+      <div class="referencia">Lámina 5 · reemplaza la figura <strong>3 · Modelo relacional</strong></div>
+      <h2>Modelo relacional en ejecución</h2>
+    </div>
+    <p class="contexto">
+      Las seis tablas del esquema, con los cuatro disparadores que las mantienen
+      coherentes sin intervención del código de la aplicación.
+    </p>
+
+    <figure>
+      <div class="marco">
+<pre class="mermaid">
+erDiagram
+    URLS ||--o{ ANALYSIS_RESULTS : "registra"
+    URLS ||--o{ REPORTS : "registra"
+    URLS ||--o{ INGESTED_URLS : "registra"
+    ANALYSIS_RESULTS ||--o{ ANALYSIS_SIGNALS : "desglosa en"
+
+    URLS {
+        uuid id PK
+        text url_normalized
+        char64 url_hash UK
+        timestamptz created_at
+    }
+    ANALYSIS_RESULTS {
+        uuid id PK
+        uuid url_id FK
+        int score
+        text risk_level
+        jsonb signals
+        text model_used
+        text mode_used
+        numeric probability
+        jsonb recommendations
+        bool tranco_verified
+        int tranco_rank
+        bool virustotal_checked
+        int virustotal_detections
+        text crawl_status
+        jsonb crawl_evidence
+        int duration_ms
+    }
+    ANALYSIS_SIGNALS {
+        bigint id PK
+        uuid analysis_id FK
+        text signal_code
+        text severity
+        int weight
+        text explanation
+        jsonb evidence
+    }
+    REPORTS {
+        uuid id PK
+        uuid url_id FK
+        text label
+        text comment
+        text source
+    }
+    INGESTED_URLS {
+        uuid id PK
+        uuid url_id FK
+        smallint label
+        text source
+        jsonb raw_payload
+    }
+    SYSTEM_SETTINGS {
+        text key PK
+        jsonb value_json
+        text description
+    }
+</pre>
+      </div>
+      <figcaption>
+        Lámina 5. Modelo relacional. <code>SYSTEM_SETTINGS</code> aparece sin
+        relaciones porque almacena configuración global, no datos de URLs.
+      </figcaption>
+    </figure>
+
+    <div class="verificado">
+      <h3>Disparadores comprobados sobre la base real</h3>
+      <div class="dato ok"><span><code>fill_url_dimension</code> pobló la tabla maestra y enlazó <code>url_id</code></span><span>3 tablas</span></div>
+      <div class="dato ok"><span><code>sync_analysis_signals</code> desglosó el JSONB a filas</span><span>5 señales</span></div>
+      <div class="dato ok"><span>Esquema aplicado sin errores</span><span>6 tablas · 4 triggers</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================ 6 -->
+  <section class="lamina">
+    <div class="encabezado-lamina">
+      <div class="referencia">Lámina 6 · reemplaza la figura <strong>12 · Diagrama de distribución</strong></div>
+      <h2>Despliegue verificado</h2>
+    </div>
+    <p class="contexto">
+      Se distingue lo que está en funcionamiento de lo que quedó como trabajo
+      futuro. Es preferible declararlo así que dibujar una cadena de
+      distribución que aún no existe.
+    </p>
+
+    <figure>
+      <div class="marco">
+<pre class="mermaid">
+flowchart TB
+    subgraph verificado["En funcionamiento y comprobado"]
+        direction TB
+        subgraph equipo["Equipo de desarrollo · Windows 11"]
+            direction LR
+            NAV["Navegador<br/>localhost:8080"]
+            UVI["Uvicorn<br/>127.0.0.1:8000"]
+            PGL[("PostgreSQL 17<br/>puerto 5432")]
+        end
+        NAV -->|HTTP| UVI
+        UVI -->|TCP| PGL
+        UVI -->|HTTPS| NUBE["Tranco · VirusTotal"]
+    end
+
+    subgraph futuro["Trabajo futuro"]
+        direction LR
+        APK["Empaquetado APK<br/>requiere Android SDK"]
+        VPS["VPS con Nginx y TLS<br/>alerta.mirrorhub.tech"]
+        TIENDA["Distribución en tienda"]
+    end
+
+    APK -.-> TIENDA
+    VPS -.-> APK
+
+    style futuro stroke-dasharray: 5 5
+    style APK fill:#F7EDDD,stroke:#A9701A,color:#17222E
+    style VPS fill:#F7EDDD,stroke:#A9701A,color:#17222E
+    style TIENDA fill:#F7EDDD,stroke:#A9701A,color:#17222E
+</pre>
+      </div>
+      <figcaption>
+        Lámina 6. Despliegue. El bloque punteado agrupa lo que está
+        implementado en código pero no puesto en producción.
+      </figcaption>
+    </figure>
+
+    <div class="verificado">
+      <h3>Estado de cada pieza</h3>
+      <div class="dato ok"><span>Aplicación web compilada en modo release</span><span>funcionando</span></div>
+      <div class="dato ok"><span>Backend con base de datos y APIs externas</span><span>funcionando</span></div>
+      <div class="dato ok"><span>Código nativo Android para detección de SMS</span><span>escrito, sin compilar</span></div>
+      <div class="dato malo"><span>Servidor de producción</span><span>origen no alcanzable</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================ resumen -->
+  <section class="lamina">
+    <div class="encabezado-lamina">
+      <div class="referencia">Resumen de cambios</div>
+      <h2>Qué reemplaza cada lámina</h2>
+    </div>
+
+    <div class="tabla-envoltura">
+      <table>
+        <thead>
+          <tr>
+            <th>Figura actual</th>
+            <th>Acción</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>3 · Modelo relacional</td>
+            <td>Reemplazar por lámina 5</td>
+            <td>Faltaban <code>model_used</code>, <code>probability</code>, <code>recommendations</code> y las columnas del crawler</td>
+          </tr>
+          <tr>
+            <td>10a · Secuencia de análisis</td>
+            <td>Reemplazar por lámina 2</td>
+            <td>Omitía la persistencia y la ejecución en hilo aparte</td>
+          </tr>
+          <tr>
+            <td class="quitar">10c · Actualización de reglas</td>
+            <td class="quitar">Eliminar</td>
+            <td>Describe tres endpoints que no existen en el backend</td>
+          </tr>
+          <tr>
+            <td>11 · Componentes</td>
+            <td>Reemplazar por lámina 1</td>
+            <td>No distinguía las dependencias opcionales</td>
+          </tr>
+          <tr>
+            <td>12 · Distribución</td>
+            <td>Reemplazar por lámina 6</td>
+            <td>Mostraba tienda de aplicaciones y servidor sin verificar</td>
+          </tr>
+          <tr>
+            <td class="nuevo">— sin equivalente —</td>
+            <td class="nuevo">Añadir láminas 3 y 4</td>
+            <td>La fusión de motores y el ciclo de retroalimentación no estaban documentados</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      <strong>Para insertarlas en el documento:</strong> abre esta página en el
+      navegador, amplía al 150 % y captura cada lámina, o usa
+      <em>Imprimir a PDF</em> y recorta. Los diagramas son vectoriales, así que
+      no pierden nitidez al ampliar.
+    </p>
+    <p>
+      Cada dato de las secciones de comprobación proviene de una ejecución real
+      sobre el sistema, no de una estimación. Si un valor cambia al reejecutar,
+      corrige el diagrama antes que el documento.
+    </p>
+  </footer>
+
+</div>
+
+<script src="mermaid.min.js"></script>
+<script>
+  // Tema claro fijo: las laminas se capturan para un documento impreso.
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      background:        '#FFFFFF',
+      primaryColor:      '#E8F0F6',
+      primaryBorderColor:'#1B5B87',
+      primaryTextColor:  '#17222E',
+      lineColor:         '#55677A',
+      secondaryColor:    '#F5F8FA',
+      tertiaryColor:     '#FFFFFF',
+      fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+      fontSize: '15px'
+    },
+    flowchart: { curve: 'basis', useMaxWidth: true },
+    sequence:  { useMaxWidth: true, wrap: true },
+    er:        { useMaxWidth: true }
+  });
+</script>
+</body>
+</html>

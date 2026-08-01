@@ -10,7 +10,7 @@ import hashlib
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-from sqlalchemy import Column, Text, Integer, Boolean, DateTime, Index
+from sqlalchemy import Column, Text, Integer, Boolean, DateTime, Index, Numeric
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import Base
@@ -66,6 +66,26 @@ class AnalysisResult(Base):
     # Metadatos
     mode_used = Column(Text, default="auto")  # online, offline, auto
     duration_ms = Column(Integer, nullable=True)
+
+    # Columnas presentes en database/schema.sql que faltaban en el ORM.
+    # Sin ellas, cualquier intento de escribirlas lanzaba TypeError y el
+    # analisis nunca llegaba a persistirse.
+    model_used = Column(Text, nullable=True)  # ml | heuristic
+    probability = Column(Numeric(5, 4), nullable=True)
+    recommendations = Column(JSONB, nullable=True)
+
+    # Dimension de URLs: el trigger fill_url_dimension la completa sola,
+    # se declara para poder consultarla desde el ORM.
+    url_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Resultado del crawler opcional
+    crawl_enabled = Column(Boolean, default=False)
+    crawl_status = Column(Text, default="SKIPPED")  # SKIPPED | OK | TIMEOUT | ERROR
+    crawl_final_url = Column(Text, nullable=True)
+    crawl_redirect_chain = Column(JSONB, nullable=True)
+    crawl_html_fingerprint = Column(Text, nullable=True)
+    crawl_evidence = Column(JSONB, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Indices
@@ -104,8 +124,12 @@ class AnalysisResult(Base):
         tranco_rank: Optional[int] = None,
         virustotal_checked: bool = False,
         virustotal_detections: Optional[int] = None,
+        model_used: Optional[str] = None,
         mode_used: str = "auto",
-        duration_ms: Optional[int] = None
+        duration_ms: Optional[int] = None,
+        probability: Optional[float] = None,
+        recommendations: Optional[List[str]] = None,
+        crawl: Optional[Dict[str, Any]] = None
     ) -> "AnalysisResult":
         """
         Crea una nueva instancia de AnalysisResult.
@@ -140,8 +164,17 @@ class AnalysisResult(Base):
             tranco_rank=tranco_rank,
             virustotal_checked=virustotal_checked,
             virustotal_detections=virustotal_detections,
+            model_used=model_used,
             mode_used=mode_used,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
+            probability=probability,
+            recommendations=recommendations,
+            crawl_enabled=bool(crawl and crawl.get("enabled")),
+            crawl_status=(crawl or {}).get("status", "SKIPPED"),
+            crawl_final_url=(crawl or {}).get("final_url"),
+            crawl_redirect_chain=(crawl or {}).get("redirect_chain"),
+            crawl_html_fingerprint=(crawl or {}).get("html_fingerprint"),
+            crawl_evidence=(crawl or {}).get("evidence"),
         )
 
     def to_dict(self) -> Dict[str, Any]:

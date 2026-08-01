@@ -94,7 +94,11 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     class Config:
-        env_file = ".env"
+        # Ruta absoluta a backend/.env. Con una ruta relativa, la
+        # configuracion solo se cargaba si el proceso se lanzaba desde
+        # backend/: los scripts de scripts/ corren desde la raiz y se
+        # quedaban sin DATABASE_URL ni claves de API.
+        env_file = str(Path(__file__).parent.parent.parent / ".env")
         env_file_encoding = "utf-8"
         case_sensitive = True
         extra = "ignore"  # Ignorar variables extra en .env

@@ -87,60 +87,56 @@ FEATURE_COLUMNS = [
 
 
 def load_data():
-    """Carga el dataset completo."""
-    train_path = SPLITS_DIR / "train.csv"
+    """
+    Carga los splits canonicos generados por rebuild_splits.py.
 
-    if not train_path.exists():
-        logger.error(f"No se encontro {train_path}")
-        sys.exit(1)
+    La version anterior de este script leia solo train.csv, lo re-partia y
+    SOBRESCRIBIA val.csv y test.csv con su propia division. Ese
+    comportamiento fue el origen de los conjuntos de evaluacion con fuga de
+    datos (has_https e in_tranco separaban las clases al 100%). Ahora los
+    splits se leen tal cual: la unica fuente de verdad para generarlos es
+    scripts/rebuild_splits.py.
+    """
+    frames = {}
+    for nombre in ("train.csv", "val.csv", "test.csv"):
+        ruta = SPLITS_DIR / nombre
+        try:
+            frames[nombre] = pd.read_csv(ruta)
+        except (OSError, FileNotFoundError):
+            # El antivirus puede poner en cuarentena estos CSV porque
+            # contienen URLs de phishing activas. Los splits estan
+            # versionados, asi que se leen desde el objeto de git.
+            import io
+            import subprocess
+            logger.warning(f"  {nombre} inaccesible en disco; leyendo desde git...")
+            resultado = subprocess.run(
+                ["git", "show", f"HEAD:datasets/splits/{nombre}"],
+                capture_output=True, cwd=SPLITS_DIR.parent.parent, check=False,
+            )
+            if resultado.returncode != 0:
+                logger.error(f"No se pudo leer {nombre} ni de disco ni de git. "
+                             "Ejecute scripts/rebuild_splits.py primero.")
+                sys.exit(1)
+            frames[nombre] = pd.read_csv(io.BytesIO(resultado.stdout))
+        df = frames[nombre]
+        logger.info(f"  {nombre}: {len(df)} muestras "
+                    f"(legitimas {len(df[df['label'] == 0])}, maliciosas {len(df[df['label'] == 1])})")
 
-    df = pd.read_csv(train_path)
-    logger.info(f"Dataset cargado: {len(df)} muestras")
-    logger.info(f"  - Legitimas (0): {len(df[df['label'] == 0])}")
-    logger.info(f"  - Maliciosas (1): {len(df[df['label'] == 1])}")
-
-    return df
+    return frames
 
 
-def split_data(df):
-    """Divide datos en train/val/test (60/20/20)."""
-    logger.info("Dividiendo datos en train/val/test...")
+def split_data(frames):
+    """Separa X/y de los splits ya cargados. No escribe ningun archivo."""
+    train, val, test = frames["train.csv"], frames["val.csv"], frames["test.csv"]
 
-    X = df[FEATURE_COLUMNS]
-    y = df['label']
-    urls = df['url']
+    X_train, y_train = train[FEATURE_COLUMNS], train['label']
+    X_val, y_val = val[FEATURE_COLUMNS], val['label']
+    X_test, y_test = test[FEATURE_COLUMNS], test['label']
 
-    # Primera division: train+val (80%) vs test (20%)
-    X_temp, X_test, y_temp, y_test, urls_temp, urls_test = train_test_split(
-        X, y, urls, test_size=0.20, random_state=42, stratify=y
-    )
-
-    # Segunda division: train (75% de 80% = 60%) vs val (25% de 80% = 20%)
-    X_train, X_val, y_train, y_val, urls_train, urls_val = train_test_split(
-        X_temp, y_temp, urls_temp, test_size=0.25, random_state=42, stratify=y_temp
-    )
-
-    logger.info(f"  Train: {len(X_train)} ({len(X_train)/len(df)*100:.1f}%)")
-    logger.info(f"  Val: {len(X_val)} ({len(X_val)/len(df)*100:.1f}%)")
-    logger.info(f"  Test: {len(X_test)} ({len(X_test)/len(df)*100:.1f}%)")
-
-    # Guardar splits
-    train_df = pd.DataFrame(X_train)
-    train_df['url'] = urls_train.values
-    train_df['label'] = y_train.values
-    train_df.to_csv(SPLITS_DIR / "train_split.csv", index=False)
-
-    val_df = pd.DataFrame(X_val)
-    val_df['url'] = urls_val.values
-    val_df['label'] = y_val.values
-    val_df.to_csv(SPLITS_DIR / "val.csv", index=False)
-
-    test_df = pd.DataFrame(X_test)
-    test_df['url'] = urls_test.values
-    test_df['label'] = y_test.values
-    test_df.to_csv(SPLITS_DIR / "test.csv", index=False)
-
-    logger.info("Splits guardados en datasets/splits/")
+    total = len(train) + len(val) + len(test)
+    logger.info(f"  Train: {len(X_train)} ({len(X_train)/total*100:.1f}%)")
+    logger.info(f"  Val: {len(X_val)} ({len(X_val)/total*100:.1f}%)")
+    logger.info(f"  Test: {len(X_test)} ({len(X_test)/total*100:.1f}%)")
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
@@ -622,17 +618,16 @@ def main():
     logger.info("EVALUACION COMPLETA DE MODELOS ML - ALERTA-LINK")
     logger.info("=" * 70)
 
-    # Cargar datos
-    df = load_data()
+    # Cargar los splits canonicos (sin re-partir ni sobrescribir)
+    frames = load_data()
 
-    # Dividir datos
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(frames)
 
-    # Info del dataset
+    total = len(X_train) + len(X_val) + len(X_test)
     dataset_info = {
-        'total': len(df),
-        'legitimate': len(df[df['label'] == 0]),
-        'malicious': len(df[df['label'] == 1]),
+        'total': total,
+        'legitimate': int((y_train == 0).sum() + (y_val == 0).sum() + (y_test == 0).sum()),
+        'malicious': int((y_train == 1).sum() + (y_val == 1).sum() + (y_test == 1).sum()),
         'features': len(FEATURE_COLUMNS),
         'train': len(X_train),
         'val': len(X_val),
@@ -642,9 +637,10 @@ def main():
     # Obtener modelos
     models = get_models()
 
-    # Validacion cruzada
-    X_full = df[FEATURE_COLUMNS]
-    y_full = df['label']
+    # Validacion cruzada SOLO sobre train+val: el test queda reservado
+    # para la evaluacion final sobre datos nunca vistos.
+    X_full = pd.concat([X_train, X_val], ignore_index=True)
+    y_full = pd.concat([y_train, y_val], ignore_index=True)
     cv_results = cross_validation_evaluation(X_full, y_full, models, cv=5)
 
     # Entrenamiento y evaluacion final

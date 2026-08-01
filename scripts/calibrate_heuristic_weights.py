@@ -1,609 +1,242 @@
 #!/usr/bin/env python3
 """
-Script de Calibracion de Pesos Heuristicos para ALERTA-LINK
+calibrate_heuristic_weights.py - Calibra los pesos del motor heuristico
 
-Este script utiliza el dataset de 7,600 URLs para calibrar y optimizar
-los pesos del modelo heuristico, reduciendo falsos positivos y mejorando
-la precision sin sustituir el motor heuristico.
+A DIFERENCIA de la version anterior, este script NO tiene una copia propia
+de la logica heuristica: importa el motor real del backend
+(app.services.heuristic_predictor) y extrae con el las senales de cada URL.
+La version anterior duplicaba extract_features/generate_signals con solo 15
+senales (sin TYPOSQUATTING ni DOMAIN_NOT_IN_TRANCO) y con el matching por
+substring ya corregido en el motor, por lo que optimizaba pesos para un
+motor distinto al de produccion.
 
 Metodologia:
-1. Carga el dataset completo (train + val + test)
-2. Extrae senales heuristicas de cada URL (SIN APIs externas)
-3. Usa optimizacion para encontrar los pesos optimos
-4. Guarda los pesos calibrados en models/heuristic_weights.json
+1. Carga train.csv + val.csv (NUNCA test.csv, que queda reservado para
+   medir sobre datos que el optimizador no vio).
+2. Ejecuta el motor real en modo offline sobre cada URL y registra que
+   senales se activaron. Las activaciones no dependen de los pesos, asi
+   que una sola pasada basta.
+3. Busca con evolucion diferencial (SciPy) los pesos locales que maximizan
+   F1, con el umbral de produccion: maliciosa si score > 30 (MEDIUM/HIGH).
+4. Guarda los pesos en models/ y en backend/models/ (la ruta que el motor
+   lee realmente).
+
+Uso:
+    python scripts/calibrate_heuristic_weights.py
+
+Salida:
+    models/heuristic_weights.json
+    backend/models/heuristic_weights.json
 """
 
 import sys
-import os
 import json
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, List, Tuple, Any, NamedTuple
+import logging
 from datetime import datetime
-from urllib.parse import urlparse
-import re
-import math
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
 from scipy.optimize import differential_evolution
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix
-)
 
-# Configuracion de paths
 BASE_DIR = Path(__file__).parent.parent
-DATASETS_DIR = BASE_DIR / 'datasets' / 'splits'
-MODELS_DIR = BASE_DIR / 'models'
-OUTPUT_FILE = MODELS_DIR / 'heuristic_weights.json'
+sys.path.insert(0, str(BASE_DIR / "backend"))
 
+from app.services.heuristic_predictor import heuristic_predictor, DEFAULT_WEIGHTS  # noqa: E402
 
-# ============================================================================
-# LISTAS DE PATRONES (copiadas de heuristic_predictor.py)
-# ============================================================================
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
-SUSPICIOUS_WORDS = [
-    'login', 'signin', 'verify', 'update', 'secure', 'account', 'password',
-    'confirm', 'banking', 'suspend', 'expire', 'verify', 'wallet', 'alert',
-    'unusual', 'locked', 'unlock', 'validate', 'authenticate', 'credential',
-    'ssn', 'social', 'security', 'paypal', 'netflix', 'amazon', 'apple',
-    'microsoft', 'google', 'facebook', 'instagram', 'whatsapp', 'telegram',
-    'bancolombia', 'davivienda', 'nequi', 'daviplata', 'bbva', 'banco',
-    'crack', 'keygen', 'serial', 'patch', 'activator', 'kms', 'warez',
-    'nulled', 'cracked', 'torrent', 'free-download', 'full-version'
+SPLITS_DIR = BASE_DIR / "datasets" / "splits"
+DESTINOS = [
+    BASE_DIR / "models" / "heuristic_weights.json",
+    BASE_DIR / "backend" / "models" / "heuristic_weights.json",
 ]
 
-SHORTENERS = [
-    'bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'ow.ly', 'is.gd', 'buff.ly',
-    'adf.ly', 'bit.do', 'mcaf.ee', 'su.pr', 'yourls.org', 'short.io',
-    'rebrand.ly', 'cutt.ly', 'shorturl.at', 'acortar.link', 'acortaurl.com'
+# Umbral de produccion: el sistema trata MEDIUM y HIGH como maliciosa
+UMBRAL = 30
+SEED = 42
+
+# Senales que pueden activarse en modo offline y cuyos pesos se optimizan.
+# Las senales de APIs externas (Tranco online, VirusTotal, WHOIS) no se
+# activan sin red, asi que sus pesos se conservan tal cual.
+SENALES_LOCALES = [
+    'IP_AS_HOST', 'PUNYCODE_DETECTED', 'BRAND_IMPERSONATION', 'TYPOSQUATTING',
+    'URL_SHORTENER', 'PASTE_SERVICE', 'HOSTING_PLATFORM', 'RISKY_TLD',
+    'SUSPICIOUS_WORDS', 'EXCESSIVE_SUBDOMAINS', 'NO_HTTPS', 'LONG_URL',
+    'HIGH_DIGIT_RATIO', 'HIGH_ENTROPY', 'AT_SYMBOL', 'DOMAIN_NOT_IN_TRANCO',
+    'TRUSTED_DOMAIN',
 ]
 
-RISKY_TLDS = [
-    'tk', 'ml', 'ga', 'cf', 'gq', 'xyz', 'top', 'club', 'online', 'site',
-    'work', 'click', 'link', 'info', 'pw', 'cc', 'ws', 'buzz', 'surf',
-    'icu', 'monster', 'cam', 'email', 'life', 'live', 'world', 'today'
-]
-
-PASTE_SERVICES = [
-    'pastebin.com', 'paste.ee', 'justpaste.it', 'ghostbin.com', 'paste2.org',
-    'hastebin.com', 'dpaste.org', 'ideone.com', 'codepad.org', 'rentry.co',
-    'del.dog', 'paste.mozilla.org', 'privatebin.net'
-]
-
-HOSTING_PLATFORMS = [
-    'appspot.com', 'github.io', 'gitlab.io', 'herokuapp.com', 'netlify.app',
-    'vercel.app', 'pages.dev', 'web.app', 'firebaseapp.com', 'azurewebsites.net',
-    'cloudfront.net', 'amazonaws.com', 'blob.core.windows.net', 'ngrok.io',
-    'trycloudflare.com', 'workers.dev', 'r2.dev', 'replit.co', 'glitch.me'
-]
-
-KNOWN_BRANDS = [
-    'paypal', 'netflix', 'amazon', 'apple', 'microsoft', 'google', 'facebook',
-    'instagram', 'whatsapp', 'telegram', 'twitter', 'linkedin', 'spotify',
-    'bancolombia', 'davivienda', 'nequi', 'daviplata', 'bbva', 'santander',
-    'banco', 'dian', 'movistar', 'claro', 'tigo', 'rappi', 'mercadolibre',
-    'falabella', 'exito', 'alkosto', 'olimpica', 'colsubsidio', 'compensar'
-]
-
-OFFICIAL_DOMAINS = {
-    'paypal': 'paypal.com', 'netflix': 'netflix.com', 'amazon': 'amazon.com',
-    'apple': 'apple.com', 'microsoft': 'microsoft.com', 'google': 'google.com',
-    'facebook': 'facebook.com', 'instagram': 'instagram.com', 'whatsapp': 'whatsapp.com',
-    'bancolombia': 'bancolombia.com', 'davivienda': 'davivienda.com',
-    'nequi': 'nequi.com.co', 'daviplata': 'daviplata.com', 'dian': 'dian.gov.co',
-    'rappi': 'rappi.com', 'mercadolibre': 'mercadolibre.com.co'
-}
-
-TRUSTED_DOMAINS = [
-    'google.com', 'youtube.com', 'facebook.com', 'amazon.com', 'microsoft.com',
-    'apple.com', 'netflix.com', 'twitter.com', 'instagram.com', 'linkedin.com',
-    'github.com', 'stackoverflow.com', 'wikipedia.org', 'reddit.com',
-    'bancolombia.com', 'davivienda.com', 'bbva.com.co', 'grupobancolombia.com',
-    'nequi.com.co', 'daviplata.com', 'pse.com.co', 'dian.gov.co', 'gov.co'
-]
+# Limites por senal, con criterio experto:
+# - TRUSTED_DOMAIN debe ser siempre bonificacion.
+# - Suplantacion de marca y typosquatting deben ser siempre graves.
+def limites_para(nombre: str) -> Tuple[float, float]:
+    if nombre == 'TRUSTED_DOMAIN':
+        return (-50, -10)
+    if nombre in ('BRAND_IMPERSONATION', 'TYPOSQUATTING'):
+        return (30, 60)
+    if nombre in ('IP_AS_HOST', 'PUNYCODE_DETECTED'):
+        return (15, 50)
+    return (0, 40)
 
 
-# Pesos locales (se calibran con el dataset)
-LOCAL_WEIGHTS = {
-    'IP_AS_HOST': 30,
-    'PUNYCODE_DETECTED': 25,
-    'BRAND_IMPERSONATION': 45,
-    'URL_SHORTENER': 15,
-    'PASTE_SERVICE': 20,
-    'HOSTING_PLATFORM': 15,
-    'RISKY_TLD': 15,
-    'SUSPICIOUS_WORDS': 10,
-    'EXCESSIVE_SUBDOMAINS': 10,
-    'NO_HTTPS': 8,
-    'LONG_URL': 5,
-    'HIGH_DIGIT_RATIO': 8,
-    'HIGH_ENTROPY': 10,
-    'AT_SYMBOL': 15,
-    'TRUSTED_DOMAIN': -30,  # Lista local de dominios confiables
-}
-
-# Pesos externos (NO se calibran - se mantienen fijos)
-# Estos requieren APIs externas que no podemos usar offline
-EXTERNAL_WEIGHTS = {
-    'DOMAIN_NOT_IN_TRANCO': 12,
-    'DOMAIN_IN_TRANCO': -35,
-    'VIRUSTOTAL_CLEAN': -25,
-    'VIRUSTOTAL_MALICIOUS_LOW': 25,
-    'VIRUSTOTAL_MALICIOUS_MED': 40,
-    'VIRUSTOTAL_MALICIOUS_HIGH': 60,
-    'VIRUSTOTAL_MALICIOUS_CRITICAL': 80
-}
-
-# Todos los pesos combinados
-DEFAULT_WEIGHTS = {**LOCAL_WEIGHTS, **EXTERNAL_WEIGHTS}
+def cargar_urls() -> Tuple[List[str], np.ndarray]:
+    """Carga train+val. test.csv queda fuera deliberadamente."""
+    frames = []
+    for nombre in ("train.csv", "val.csv"):
+        ruta = SPLITS_DIR / nombre
+        df = pd.read_csv(ruta)
+        frames.append(df[["url", "label"]])
+        logger.info(f"  {nombre}: {len(df)} URLs")
+    combinado = pd.concat(frames, ignore_index=True).drop_duplicates(subset=["url"])
+    logger.info(f"  total unicas: {len(combinado)}")
+    return combinado["url"].tolist(), combinado["label"].to_numpy()
 
 
-class SignalInfo(NamedTuple):
-    """Senal simple para calibracion."""
-    name: str
-    weight: float
+def extraer_activaciones(urls: List[str]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Ejecuta el motor real (offline) sobre cada URL.
 
+    Devuelve:
+        A:  matriz [n_urls x n_senales] con 1 si la senal se activo
+        sw: vector [n_urls] con el conteo de palabras sospechosas
+            (su peso efectivo en el motor es min(conteo * peso, 30))
+    """
+    n = len(urls)
+    k = len(SENALES_LOCALES)
+    indice = {s: i for i, s in enumerate(SENALES_LOCALES)}
+    A = np.zeros((n, k), dtype=np.float64)
+    sw = np.zeros(n, dtype=np.float64)
 
-def calculate_entropy(text: str) -> float:
-    """Calcula entropia de Shannon del texto."""
-    if not text:
-        return 0.0
-    prob = [text.count(c) / len(text) for c in set(text)]
-    return -sum(p * math.log2(p) for p in prob if p > 0)
-
-
-def extract_features(url: str) -> Dict[str, Any]:
-    """Extrae features de la URL para las heuristicas."""
-    features = {}
-
-    try:
-        parsed = urlparse(url)
-        domain = parsed.netloc.lower()
-        path = parsed.path.lower()
-        full_url = url.lower()
-
-        # Basicas
-        features['url_length'] = len(url)
-        features['domain'] = domain
-        features['path'] = path
-        features['has_https'] = parsed.scheme == 'https'
-
-        # TLD
-        parts = domain.split('.')
-        features['tld'] = parts[-1] if parts else ''
-        features['tld_risk'] = features['tld'] in RISKY_TLDS
-
-        # Subdominios
-        features['num_subdomains'] = max(0, len(parts) - 2)
-        features['excessive_subdomains'] = features['num_subdomains'] > 3
-
-        # Digitos
-        digits = sum(c.isdigit() for c in url)
-        features['num_digits'] = digits
-        features['digit_ratio'] = digits / len(url) if len(url) > 0 else 0
-
-        # Entropia
-        features['entropy'] = calculate_entropy(domain)
-
-        # Patrones especificos
-        features['contains_ip'] = bool(re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', domain))
-        features['has_punycode'] = 'xn--' in domain
-        features['has_at_symbol'] = '@' in url
-        features['shortener_detected'] = any(s in domain for s in SHORTENERS)
-        features['paste_service_detected'] = any(p in domain for p in PASTE_SERVICES)
-        features['hosting_platform'] = any(h in domain for h in HOSTING_PLATFORMS)
-
-        # Palabras sospechosas
-        suspicious_count = sum(1 for w in SUSPICIOUS_WORDS if w in full_url)
-        features['suspicious_words_count'] = suspicious_count
-
-        # Deteccion de marca
-        features['brand_mentioned'] = None
-        features['brand_impersonation'] = False
-        for brand in KNOWN_BRANDS:
-            if brand in full_url:
-                features['brand_mentioned'] = brand
-                official = OFFICIAL_DOMAINS.get(brand, f"{brand}.com")
-                if official not in domain and brand not in domain.split('.')[0]:
-                    features['brand_impersonation'] = True
-                break
-
-        # Dominio de confianza
-        features['is_trusted'] = any(td in domain for td in TRUSTED_DOMAINS)
-
-    except Exception as e:
-        features['error'] = str(e)
-
-    return features
-
-
-def generate_signals(url: str, features: Dict[str, Any], weights: Dict[str, float]) -> List[SignalInfo]:
-    """Genera senales basadas en las features extraidas."""
-    signals = []
-
-    # IP como host
-    if features.get('contains_ip'):
-        signals.append(SignalInfo('IP_AS_HOST', weights['IP_AS_HOST']))
-
-    # Punycode
-    if features.get('has_punycode'):
-        signals.append(SignalInfo('PUNYCODE_DETECTED', weights['PUNYCODE_DETECTED']))
-
-    # Suplantacion de marca
-    if features.get('brand_impersonation'):
-        signals.append(SignalInfo('BRAND_IMPERSONATION', weights['BRAND_IMPERSONATION']))
-
-    # URL Shortener
-    if features.get('shortener_detected'):
-        signals.append(SignalInfo('URL_SHORTENER', weights['URL_SHORTENER']))
-
-    # Paste Service
-    if features.get('paste_service_detected'):
-        signals.append(SignalInfo('PASTE_SERVICE', weights['PASTE_SERVICE']))
-
-    # Hosting Platform
-    if features.get('hosting_platform'):
-        signals.append(SignalInfo('HOSTING_PLATFORM', weights['HOSTING_PLATFORM']))
-
-    # TLD de riesgo
-    if features.get('tld_risk'):
-        signals.append(SignalInfo('RISKY_TLD', weights['RISKY_TLD']))
-
-    # Palabras sospechosas
-    if features.get('suspicious_words_count', 0) > 0:
-        count = features['suspicious_words_count']
-        weight = min(count * weights['SUSPICIOUS_WORDS'], 30)
-        signals.append(SignalInfo('SUSPICIOUS_WORDS', weight))
-
-    # Subdominios excesivos
-    if features.get('excessive_subdomains'):
-        signals.append(SignalInfo('EXCESSIVE_SUBDOMAINS', weights['EXCESSIVE_SUBDOMAINS']))
-
-    # Sin HTTPS
-    if not features.get('has_https'):
-        signals.append(SignalInfo('NO_HTTPS', weights['NO_HTTPS']))
-
-    # URL muy larga
-    if features.get('url_length', 0) > 100:
-        signals.append(SignalInfo('LONG_URL', weights['LONG_URL']))
-
-    # Alto ratio de digitos
-    if features.get('digit_ratio', 0) > 0.3:
-        signals.append(SignalInfo('HIGH_DIGIT_RATIO', weights['HIGH_DIGIT_RATIO']))
-
-    # Alta entropia
-    if features.get('entropy', 0) > 4.0:
-        signals.append(SignalInfo('HIGH_ENTROPY', weights['HIGH_ENTROPY']))
-
-    # Simbolo @
-    if features.get('has_at_symbol'):
-        signals.append(SignalInfo('AT_SYMBOL', weights['AT_SYMBOL']))
-
-    # Dominio de confianza (bonificacion)
-    if features.get('is_trusted'):
-        signals.append(SignalInfo('TRUSTED_DOMAIN', weights['TRUSTED_DOMAIN']))
-
-    return signals
-
-
-def load_datasets() -> pd.DataFrame:
-    """Carga y combina todos los datasets."""
-    print("\n[*] Cargando datasets...")
-
-    datasets = []
-    files = ['train.csv', 'val.csv', 'test.csv']
-
-    for file in files:
-        path = DATASETS_DIR / file
-        if path.exists():
-            df = pd.read_csv(path)
-            datasets.append(df)
-            print(f"   [OK] {file}: {len(df)} URLs")
-        else:
-            print(f"   [X] {file}: no encontrado")
-
-    if not datasets:
-        raise FileNotFoundError("No se encontraron datasets")
-
-    combined = pd.concat(datasets, ignore_index=True)
-    combined = combined.drop_duplicates(subset=['url'])
-
-    print(f"\n   Total: {len(combined)} URLs unicas")
-    print(f"   Legitimas: {len(combined[combined['label'] == 0])}")
-    print(f"   Phishing: {len(combined[combined['label'] == 1])}")
-
-    return combined
-
-
-def extract_signals_batch(urls: List[str], weights: Dict[str, float]) -> List[List[SignalInfo]]:
-    """Extrae senales de todas las URLs."""
-    signals_list = []
-
-    for i, url in enumerate(urls):
-        if i % 1000 == 0:
-            print(f"   Procesando URL {i+1}/{len(urls)}...")
-
+    for fila, url in enumerate(urls):
         try:
-            features = extract_features(url)
-            signals = generate_signals(url, features, weights)
-            signals_list.append(signals)
+            _, _, _, senales = heuristic_predictor.predict(
+                url, use_tranco=False, use_virustotal=False, use_whois=False
+            )
         except Exception:
-            signals_list.append([])
+            continue
+        for s in senales:
+            col = indice.get(s.id)
+            if col is None:
+                continue
+            A[fila, col] = 1.0
+            if s.id == 'SUSPICIOUS_WORDS':
+                sw[fila] = float(s.evidence.get('count', 1))
+        if (fila + 1) % 1000 == 0:
+            logger.info(f"  {fila + 1}/{n} URLs procesadas")
 
-    return signals_list
-
-
-def calculate_scores(signals_list: List[List[SignalInfo]], weights: Dict[str, float]) -> np.ndarray:
-    """Calcula scores para todas las URLs usando los pesos dados."""
-    scores = []
-    base_score = 15
-
-    for signals in signals_list:
-        score = base_score
-        for signal in signals:
-            # Usar el peso del diccionario de pesos
-            if signal.name in weights:
-                score += weights[signal.name]
-            else:
-                score += signal.weight
-
-        score = max(0, min(100, score))
-        scores.append(score)
-
-    return np.array(scores)
+    return A, sw
 
 
-def evaluate_weights_func(weights_dict: Dict[str, float],
-                          signals_list: List[List[SignalInfo]],
-                          labels: np.ndarray,
-                          threshold: float = 50) -> float:
-    """
-    Funcion objetivo para optimizacion.
-    Maximiza F1-score (minimiza 1 - F1).
-    """
-    scores = calculate_scores(signals_list, weights_dict)
-    predictions = (scores >= threshold).astype(int)
-
-    # Calcular F1 score
-    f1 = f1_score(labels, predictions, zero_division=0)
-
-    # Penalizar si no hay detecciones (soluciones triviales)
-    num_positive = predictions.sum()
-    if num_positive == 0:
-        trivial_penalty = 0.5
-    else:
-        trivial_penalty = 0
-
-    # Minimizar (1 - F1) + penalizacion por solucion trivial
-    loss = (1 - f1) + trivial_penalty
-
-    return loss
+def puntuar(A: np.ndarray, sw: np.ndarray, pesos: np.ndarray, idx_sw: int) -> np.ndarray:
+    """Replica la aritmetica del motor: suma de pesos, tope de
+    SUSPICIOUS_WORDS en 30 y recorte final a [0, 100]."""
+    contrib = A @ pesos
+    # Sustituir la contribucion lineal de SUSPICIOUS_WORDS por la real
+    contrib -= A[:, idx_sw] * pesos[idx_sw]
+    contrib += np.minimum(sw * pesos[idx_sw], 30.0) * A[:, idx_sw]
+    return np.clip(contrib, 0.0, 100.0)
 
 
-def optimize_weights(signals_list: List[List[SignalInfo]],
-                    labels: np.ndarray,
-                    local_weights: Dict[str, float],
-                    external_weights: Dict[str, float]) -> Dict[str, float]:
-    """Optimiza SOLO los pesos locales usando evolucion diferencial."""
-
-    # Solo optimizamos pesos locales
-    signal_names = list(local_weights.keys())
-
-    print(f"\n[OPT] Optimizando {len(signal_names)} pesos locales...")
-    print(f"   (Pesos externos fijos: {len(external_weights)})")
-    print("   Esto puede tomar varios minutos...\n")
-
-    # Bounds mas restrictivos para evitar valores extremos
-    bounds = []
-    for name in signal_names:
-        if name == 'TRUSTED_DOMAIN':
-            bounds.append((-50, -10))  # Siempre bonificacion
-        elif name == 'BRAND_IMPERSONATION':
-            bounds.append((30, 60))  # Siempre penalizacion alta
-        elif name in ['IP_AS_HOST', 'PUNYCODE_DETECTED']:
-            bounds.append((15, 50))  # Penalizacion media-alta
-        else:
-            bounds.append((0, 40))  # Penalizacion moderada
-
-    def objective_with_fixed(weights_array):
-        """Funcion objetivo que incluye pesos externos fijos."""
-        local_w = dict(zip(signal_names, weights_array))
-        full_weights = {**local_w, **external_weights}
-        return evaluate_weights_func(full_weights, signals_list, labels, 50)
-
-    result = differential_evolution(
-        func=objective_with_fixed,
-        bounds=bounds,
-        maxiter=150,
-        popsize=20,
-        mutation=(0.5, 1),
-        recombination=0.7,
-        seed=42,
-        disp=True,
-        workers=1,
-        tol=0.001
-    )
-
-    # Combinar pesos locales optimizados con externos fijos
-    optimized_local = dict(zip(signal_names, result.x))
-    optimized_local = {k: int(round(v)) for k, v in optimized_local.items()}
-
-    # Combinar todos los pesos
-    all_weights = {**optimized_local, **external_weights}
-
-    return all_weights
-
-
-def evaluate_model(signals_list: List[List[SignalInfo]],
-                  labels: np.ndarray,
-                  weights: Dict[str, float],
-                  name: str) -> Dict:
-    """Evalua el modelo con los pesos dados."""
-
-    scores = calculate_scores(signals_list, weights)
-    predictions = (scores >= 50).astype(int)
-
-    accuracy = accuracy_score(labels, predictions)
-    precision = precision_score(labels, predictions, zero_division=0)
-    recall = recall_score(labels, predictions, zero_division=0)
-    f1 = f1_score(labels, predictions, zero_division=0)
-
-    tn, fp, fn, tp = confusion_matrix(labels, predictions).ravel()
-
-    print(f"\n[EVAL] Resultados - {name}:")
-    print(f"   Accuracy:  {accuracy:.4f} ({accuracy*100:.2f}%)")
-    print(f"   Precision: {precision:.4f}")
-    print(f"   Recall:    {recall:.4f}")
-    print(f"   F1-Score:  {f1:.4f}")
-    print(f"\n   Matriz de Confusion:")
-    print(f"   TN (Legitimas correctas): {tn}")
-    print(f"   FP (Falsos positivos):    {fp}")
-    print(f"   FN (Falsos negativos):    {fn}")
-    print(f"   TP (Phishing detectado):  {tp}")
-
+def metricas(scores: np.ndarray, labels: np.ndarray) -> Dict[str, float]:
+    pred = scores > UMBRAL
+    real = labels == 1
+    tp = int(np.sum(pred & real))
+    tn = int(np.sum(~pred & ~real))
+    fp = int(np.sum(pred & ~real))
+    fn = int(np.sum(~pred & real))
+    prec = tp / (tp + fp) if tp + fp else 0.0
+    rec = tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * prec * rec / (prec + rec) if prec + rec else 0.0
     return {
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1,
-        'tn': int(tn),
-        'fp': int(fp),
-        'fn': int(fn),
-        'tp': int(tp)
+        "accuracy": (tp + tn) / len(labels),
+        "precision": prec, "recall": rec, "f1": f1,
+        "tp": tp, "tn": tn, "fp": fp, "fn": fn,
     }
 
 
-def save_calibrated_weights(weights: Dict[str, float], metrics: Dict):
-    """Guarda los pesos calibrados en JSON."""
+def main() -> None:
+    logger.info("=" * 64)
+    logger.info("CALIBRACION DE PESOS - usando el motor real del backend")
+    logger.info("=" * 64)
 
-    output = {
-        'version': '1.0',
-        'calibration_date': datetime.now().isoformat(),
-        'dataset_size': metrics.get('dataset_size', 0),
-        'metrics': {
-            'accuracy': metrics['accuracy'],
-            'precision': metrics['precision'],
-            'recall': metrics['recall'],
-            'f1': metrics['f1']
-        },
-        'weights': weights
+    urls, labels = cargar_urls()
+
+    logger.info("")
+    logger.info("[SCAN] Extrayendo senales con heuristic_predictor (offline)...")
+    A, sw = extraer_activaciones(urls)
+    idx_sw = SENALES_LOCALES.index('SUSPICIOUS_WORDS')
+
+    activaciones = A.sum(axis=0).astype(int)
+    logger.info("")
+    logger.info("  Activaciones por senal:")
+    for nombre, cuenta in sorted(zip(SENALES_LOCALES, activaciones), key=lambda x: -x[1]):
+        if cuenta:
+            logger.info(f"    {nombre:<26}{cuenta:>6}")
+
+    # Linea base: pesos actuales del motor
+    pesos_actuales = np.array(
+        [heuristic_predictor.weights.get(s, DEFAULT_WEIGHTS.get(s, 0)) for s in SENALES_LOCALES],
+        dtype=np.float64,
+    )
+    base = metricas(puntuar(A, sw, pesos_actuales, idx_sw), labels)
+    logger.info("")
+    logger.info(f"  Linea base (pesos actuales): accuracy {base['accuracy']:.1%}  f1 {base['f1']:.3f}")
+
+    # Optimizacion
+    logger.info("")
+    logger.info("[OPT] Evolucion diferencial (esto toma unos minutos)...")
+    limites = [limites_para(s) for s in SENALES_LOCALES]
+
+    def objetivo(w: np.ndarray) -> float:
+        return -metricas(puntuar(A, sw, w, idx_sw), labels)["f1"]
+
+    resultado = differential_evolution(
+        objetivo, bounds=limites, maxiter=200, popsize=24,
+        mutation=(0.5, 1.0), recombination=0.7, seed=SEED, tol=1e-4,
+        polish=True, disp=False,
+    )
+    pesos_nuevos = np.rint(resultado.x)
+    calibrado = metricas(puntuar(A, sw, pesos_nuevos, idx_sw), labels)
+
+    logger.info("")
+    logger.info(f"{'Metrica':<12}{'Actual':>10}{'Calibrado':>12}")
+    for m in ("accuracy", "precision", "recall", "f1"):
+        logger.info(f"{m:<12}{base[m]:>10.3f}{calibrado[m]:>12.3f}")
+    logger.info(f"{'FP':<12}{base['fp']:>10}{calibrado['fp']:>12}")
+    logger.info(f"{'FN':<12}{base['fn']:>10}{calibrado['fn']:>12}")
+
+    # Combinar con los pesos externos, que se conservan
+    pesos_finales = dict(DEFAULT_WEIGHTS)
+    pesos_finales.update(heuristic_predictor.weights)
+    pesos_finales.update({s: int(v) for s, v in zip(SENALES_LOCALES, pesos_nuevos)})
+
+    logger.info("")
+    logger.info("  Pesos calibrados (locales):")
+    for s, v in sorted(zip(SENALES_LOCALES, pesos_nuevos), key=lambda x: -abs(x[1])):
+        logger.info(f"    {s:<26}{int(v):>5}")
+
+    salida = {
+        "version": "2.0",
+        "calibration_date": datetime.now().isoformat(),
+        "engine": "app.services.heuristic_predictor (motor real)",
+        "dataset_size": len(urls),
+        "threshold": UMBRAL,
+        "metrics": {m: calibrado[m] for m in ("accuracy", "precision", "recall", "f1")},
+        "weights": pesos_finales,
     }
+    for destino in DESTINOS:
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        with open(destino, "w", encoding="utf-8") as f:
+            json.dump(salida, f, indent=2, ensure_ascii=False)
+        logger.info(f"\n[SAVE] {destino}")
 
-    MODELS_DIR.mkdir(exist_ok=True)
-
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
-
-    print(f"\n[SAVE] Pesos calibrados guardados en: {OUTPUT_FILE}")
-
-
-def main():
-    print("=" * 60)
-    print("CALIBRACION DE PESOS HEURISTICOS - ALERTA-LINK")
-    print("=" * 60)
-
-    # 1. Cargar datasets
-    df = load_datasets()
-    urls = df['url'].tolist()
-    labels = df['label'].values
-
-    # 2. Extraer senales con pesos por defecto
-    print("\n[SCAN] Extrayendo senales heuristicas...")
-    signals_list = extract_signals_batch(urls, DEFAULT_WEIGHTS)
-
-    # Contar senales encontradas
-    total_signals = sum(len(s) for s in signals_list)
-    urls_with_signals = sum(1 for s in signals_list if len(s) > 0)
-    print(f"   Total senales encontradas: {total_signals}")
-    print(f"   URLs con al menos 1 senal: {urls_with_signals}")
-
-    # Contar por tipo
-    signal_counts = {}
-    for signals in signals_list:
-        for s in signals:
-            signal_counts[s.name] = signal_counts.get(s.name, 0) + 1
-
-    print("\n   Distribucion de senales:")
-    for name, count in sorted(signal_counts.items(), key=lambda x: -x[1])[:10]:
-        print(f"      {name}: {count}")
-
-    # 3. Evaluar con pesos por defecto
-    default_metrics = evaluate_model(signals_list, labels, DEFAULT_WEIGHTS, "Pesos Por Defecto")
-
-    # 4. Optimizar pesos (solo locales, externos fijos)
-    optimized_weights = optimize_weights(signals_list, labels, LOCAL_WEIGHTS, EXTERNAL_WEIGHTS)
-
-    # 5. Re-extraer senales con pesos optimizados
-    print("\n[SCAN] Re-extrayendo senales con pesos optimizados...")
-    signals_list_opt = extract_signals_batch(urls, optimized_weights)
-
-    # 6. Evaluar con pesos optimizados
-    optimized_metrics = evaluate_model(signals_list_opt, labels, optimized_weights, "Pesos Calibrados")
-    optimized_metrics['dataset_size'] = len(df)
-
-    # 7. Mostrar comparacion
-    print("\n" + "=" * 60)
-    print("COMPARACION DE RESULTADOS")
-    print("=" * 60)
-    print(f"\n{'Metrica':<15} {'Default':<15} {'Calibrado':<15} {'Mejora':<15}")
-    print("-" * 60)
-
-    for metric in ['accuracy', 'precision', 'recall', 'f1']:
-        default_val = default_metrics[metric]
-        calib_val = optimized_metrics[metric]
-        improvement = calib_val - default_val
-        sign = '+' if improvement >= 0 else ''
-        print(f"{metric:<15} {default_val:.4f}         {calib_val:.4f}         {sign}{improvement:.4f}")
-
-    print("\n" + "-" * 60)
-    print(f"{'FP':<15} {default_metrics['fp']:<15} {optimized_metrics['fp']:<15}")
-    print(f"{'FN':<15} {default_metrics['fn']:<15} {optimized_metrics['fn']:<15}")
-
-    # 8. Mostrar pesos calibrados
-    print("\n" + "=" * 60)
-    print("PESOS CALIBRADOS")
-    print("=" * 60)
-
-    sorted_weights = sorted(optimized_weights.items(), key=lambda x: abs(x[1]), reverse=True)
-
-    print("\n[RISK] Senales de Riesgo (positivos):")
-    for name, value in sorted_weights:
-        if value > 0:
-            print(f"   {name}: +{value}")
-
-    print("\n[BONUS] Bonificaciones (negativos):")
-    for name, value in sorted_weights:
-        if value < 0:
-            print(f"   {name}: {value}")
-
-    print("\n[NEUTRAL] Neutrales:")
-    for name, value in sorted_weights:
-        if value == 0:
-            print(f"   {name}: {value}")
-
-    # 9. Guardar pesos calibrados
-    save_calibrated_weights(optimized_weights, optimized_metrics)
-
-    # 10. Resumen final
-    print("\n" + "=" * 60)
-    print("CALIBRACION COMPLETADA")
-    print("=" * 60)
-    print(f"\n[OK] Dataset utilizado: {len(df)} URLs")
-    print(f"[OK] Accuracy mejorada: {default_metrics['accuracy']:.2%} -> {optimized_metrics['accuracy']:.2%}")
-    print(f"[OK] Falsos positivos reducidos: {default_metrics['fp']} -> {optimized_metrics['fp']}")
-    print(f"[OK] Pesos guardados en: {OUTPUT_FILE}")
-
-    return optimized_weights
+    logger.info("")
+    logger.info("Reiniciar el backend para que el motor cargue los pesos nuevos.")
+    logger.info("Medir sobre test.csv con: python scripts/evaluate_offline.py test.csv")
 
 
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n\n[WARN] Calibracion cancelada por el usuario")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n[ERROR] Error durante la calibracion: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+if __name__ == "__main__":
+    main()

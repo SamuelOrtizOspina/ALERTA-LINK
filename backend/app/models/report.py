@@ -92,6 +92,10 @@ class Report(Base):
         """
         normalized = cls.normalize_url(url)
         return cls(
+            # El default de la columna solo se aplica al insertar en la base
+            # de datos. Se asigna aqui para que el id tambien exista cuando se
+            # usa el respaldo JSONL, donde el registro nunca pasa por el ORM.
+            id=uuid.uuid4(),
             url_normalized=normalized,
             url_hash=cls.hash_url(normalized),
             label=label,

@@ -181,3 +181,11 @@ node_modules/
 # Reportes con datos potencialmente sensibles
 reports/*.json
 !reports/.gitkeep
+
+# Almacenamiento de runtime (fallback JSONL cuando no hay base de datos).
+# Cambia con cada analisis/reporte, no debe versionarse.
+datasets/ingested/*.jsonl
+
+# Exportaciones de retroalimentacion pendientes de revision manual.
+# Se regeneran con scripts/export_feedback_to_dataset.py
+datasets/feedback/

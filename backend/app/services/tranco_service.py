@@ -8,6 +8,7 @@ Se usa para verificar si un dominio es legitimo.
 
 import logging
 import requests
+import threading
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 from functools import lru_cache
@@ -28,16 +29,21 @@ class TrancoService:
         self.enabled = bool(self.api_key)
         self._last_request_time = 0
         self._rate_limit_delay = 1.1  # 1 query/segundo + margen
+        # Protege el contador entre hilos del threadpool (ver nota en
+        # virustotal_service). lru_cache sobre get_domain_rank es seguro
+        # entre hilos, pero el contador de rate limit no lo era.
+        self._rate_lock = threading.Lock()
 
         if not self.enabled:
             logger.warning("Tranco API key no configurada. Servicio deshabilitado.")
 
     def _rate_limit(self):
         """Respeta el rate limit de 1 query/segundo."""
-        elapsed = time.time() - self._last_request_time
-        if elapsed < self._rate_limit_delay:
-            time.sleep(self._rate_limit_delay - elapsed)
-        self._last_request_time = time.time()
+        with self._rate_lock:
+            elapsed = time.time() - self._last_request_time
+            if elapsed < self._rate_limit_delay:
+                time.sleep(self._rate_limit_delay - elapsed)
+            self._last_request_time = time.time()
 
     def _extract_domain(self, url: str) -> str:
         """Extrae el dominio base de una URL."""

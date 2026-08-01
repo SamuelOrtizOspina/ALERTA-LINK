@@ -21,7 +21,8 @@ def test_analyze_valid_url(client, valid_url):
     assert "recommendations" in data
     assert data["score"] >= 0
     assert data["score"] <= 100
-    assert data["risk_level"] in ["LOW", "MEDIUM", "HIGH"]
+    # SAFE es un nivel valido: score 0 sin senales de riesgo
+    assert data["risk_level"] in ["SAFE", "LOW", "MEDIUM", "HIGH"]
 
 
 def test_analyze_suspicious_url(client, suspicious_url):
