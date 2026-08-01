@@ -7,6 +7,7 @@ cuando el modelo tiene incertidumbre en su prediccion.
 
 import base64
 import logging
+import threading
 import time
 import requests
 from typing import Dict, Any, Optional, Tuple
@@ -50,6 +51,11 @@ class VirusTotalService:
         self.enabled = bool(self.api_key)
         self._last_request_time = 0
         self._min_request_interval = 15  # segundos entre requests (4/minuto limite gratuito)
+        # El endpoint corre las predicciones en un threadpool, asi que varias
+        # peticiones pueden entrar aqui a la vez. Sin lock, dos hilos leerian
+        # el mismo _last_request_time y ambos consultarian de inmediato,
+        # excediendo el limite del tier gratuito (429).
+        self._rate_lock = threading.Lock()
 
     def _get_headers(self) -> Dict[str, str]:
         """Obtiene headers para la API."""
@@ -60,12 +66,13 @@ class VirusTotalService:
 
     def _rate_limit(self):
         """Espera si es necesario para respetar rate limits."""
-        elapsed = time.time() - self._last_request_time
-        if elapsed < self._min_request_interval:
-            wait_time = self._min_request_interval - elapsed
-            logger.debug(f"Rate limit: esperando {wait_time:.1f}s")
-            time.sleep(wait_time)
-        self._last_request_time = time.time()
+        with self._rate_lock:
+            elapsed = time.time() - self._last_request_time
+            if elapsed < self._min_request_interval:
+                wait_time = self._min_request_interval - elapsed
+                logger.debug(f"Rate limit: esperando {wait_time:.1f}s")
+                time.sleep(wait_time)
+            self._last_request_time = time.time()
 
     def _url_to_id(self, url: str) -> str:
         """Convierte URL a ID de VirusTotal (base64 sin padding)."""

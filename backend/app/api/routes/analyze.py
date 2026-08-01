@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
 
@@ -100,10 +101,16 @@ async def analyze_url(
 
         logger.info(f"Analizando URL con modelo {model_used.value}, modo {mode_used.value}: tranco={use_tranco}, vt={use_virustotal}, whois={use_whois}")
 
-        # Seleccionar el modelo correcto
+        # Las predicciones son sincronas y, en modo online, esperan por los
+        # rate limits de Tranco y VirusTotal (hasta 15 s). Ejecutarlas
+        # directamente aqui bloquearia el event loop y serializaria a todos
+        # los usuarios: con tres peticiones simultaneas la tercera esperaba
+        # 46 s. Se delegan a un threadpool para que el servidor siga
+        # atendiendo el resto de peticiones mientras esperan.
         if model_used == ModelType.ML:
             # Modelo ML (GradientBoosting)
-            score, probability, risk_level, signals = predictor.predict(
+            score, probability, risk_level, signals = await run_in_threadpool(
+                predictor.predict,
                 normalized_url,
                 use_tranco=use_tranco,
                 use_virustotal=use_virustotal
@@ -111,7 +118,8 @@ async def analyze_url(
             recommendations = predictor.get_recommendations(risk_level, signals)
         else:
             # Modelo Heuristico (reglas con pesos calibrados)
-            score, probability, risk_level, signals = heuristic_predictor.predict(
+            score, probability, risk_level, signals = await run_in_threadpool(
+                heuristic_predictor.predict,
                 normalized_url,
                 use_tranco=use_tranco,
                 use_virustotal=use_virustotal,
